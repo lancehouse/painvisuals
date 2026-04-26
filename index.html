@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pain Visuals</title>
+  <meta name="description" content="Interactive visualisations for pain education, built with p5.js." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0c0e14;
+      --surface:      #13161f;
+      --surface2:     #1a1e2b;
+      --border:       rgba(255,255,255,0.07);
+      --border2:      rgba(255,255,255,0.14);
+      --text:         #dde1ed;
+      --text-muted:   #6b7291;
+      --accent:       #4f8ef7;
+      --radius:       14px;
+      --font-sans:    'DM Sans', sans-serif;
+      --font-mono:    'DM Mono', monospace;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      padding: 3rem 2rem 2rem;
+      border-bottom: 0.5px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      top: -80px; left: -80px;
+      width: 360px; height: 360px;
+      background: radial-gradient(circle, rgba(79,142,247,0.05) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-inner { max-width: 900px; margin: 0 auto; position: relative; }
+
+    .site-eyebrow {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 300;
+      letter-spacing: -0.5px;
+      color: #f0f3fc;
+      line-height: 1.1;
+    }
+
+    h1 span { font-weight: 500; }
+
+    .site-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-weight: 300;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /*
+      CARDS — each is a link to the OpenProcessing sketch.
+      To change a sketch: update the href on the <a class="card"> element.
+      To change a thumbnail: replace the image file in your GitHub repo root.
+    */
+    a.card {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    a.card:hover {
+      border-color: var(--border2);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+    }
+
+    .card-thumb-wrap {
+      overflow: hidden;
+      background: #080a0f;
+      border-bottom: 0.5px solid var(--border);
+      aspect-ratio: 4/3;
+    }
+
+    .card-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    a.card:hover .card-thumb { transform: scale(1.03); }
+
+    .card-body {
+      padding: 1rem 1.25rem 0.9rem;
+      flex: 1;
+    }
+
+    .card-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 500;
+      color: #edf0fc;
+      letter-spacing: -0.2px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      font-weight: 300;
+      line-height: 1.5;
+    }
+
+    .card-footer {
+      padding: 0.65rem 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 0.5px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .sketch-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #3a4060;
+    }
+
+    .card-cta {
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      font-size: 12px;
+      color: #2e3350;
+      border-top: 0.5px solid var(--border);
+      font-family: var(--font-mono);
+      margin-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .grid { padding: 1rem; gap: 1rem; }
+      header { padding: 2rem 1rem 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="site-eyebrow">p5.js · OpenProcessing</div>
+      <h1>Pain <span>Visuals</span></h1>
+      <p class="site-subtitle">Interactive visualisations for pain education — click any sketch to open</p>
+    </div>
+  </header>
+
+  <main class="grid">
+
+    <!-- ══════════════════════════════════════
+         SKETCH 1 — Sweet Zone
+         Sketch ID: 2730744
+         Thumbnail file: sweetzone.jpg  (upload to GitHub repo root)
+    ══════════════════════════════════════ -->
+    <a class="card" href="https://openprocessing.org/sketch/2730744" target="_blank" rel="noopener">
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" src="sweetzone.jpg" alt="Sweet Zone sketch thumbnail" />
+      </div>
+      <div class="card-body">
+        <div class="card-tag">Zone</div>
+        <div class="card-title">Sweet Zone</div>
+        <p class="card-desc">Vintage VU-style half-moon meter with editable labels</p>
+      </div>
+      <div class="card-footer">
+        <span class="sketch-id">#2730744</span>
+        <span class="card-cta">Open sketch ↗</span>
+      </div>
+    </a>
+
+    <!-- ══════════════════════════════════════
+         SKETCH 2 — Protectometer
+         Sketch ID: 2719392
+         Thumbnail file: protectometer.jpg  (upload to GitHub repo root)
+    ══════════════════════════════════════ -->
+    <a class="card" href="https://openprocessing.org/sketch/2719392" target="_blank" rel="noopener">
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" src="protectometer.jpg" alt="Protectometer sketch thumbnail" />
+      </div>
+      <div class="card-body">
+        <div class="card-tag">Meter</div>
+        <div class="card-title">Protectometer</div>
+        <p class="card-desc">Interactive pain sensitivity meter with Lorenz system</p>
+      </div>
+      <div class="card-footer">
+        <span class="sketch-id">#2719392</span>
+        <span class="card-cta">Open sketch ↗</span>
+      </div>
+    </a>
+
+    <!-- ══════════════════════════════════════
+         SKETCH 3 — Case Formulations
+         Sketch ID: 2926047
+         Thumbnail file: caseformulations.jpg  (upload to GitHub repo root)
+    ══════════════════════════════════════ -->
+    <a class="card" href="https://openprocessing.org/sketch/2926047" target="_blank" rel="noopener">
+      <div class="card-thumb-wrap">
+        <img class="card-thumb" src="caseformulations.jpg" alt="Case Formulations sketch thumbnail" />
+      </div>
+      <div class="card-body">
+        <div class="card-tag">Network</div>
+        <div class="card-title">Case Formulations</div>
+        <p class="card-desc">Interactive pain network builder</p>
+      </div>
+      <div class="card-footer">
+        <span class="sketch-id">#2926047</span>
+        <span class="card-cta">Open sketch ↗</span>
+      </div>
+    </a>
+
+  </main>
+
+  <footer>
+    painvisuals.com &nbsp;·&nbsp; built with p5.js
+  </footer>
+
+</body>
+</html>
