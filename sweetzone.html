@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sweet Zone — Pain Visuals</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #111; overflow: hidden; }
+
+    /* Back button */
+    #back {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      z-index: 1000;
+      font-family: 'DM Mono', monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      background: rgba(0,0,0,0.45);
+      border: 0.5px solid rgba(255,255,255,0.15);
+      border-radius: 100px;
+      padding: 6px 14px;
+      text-decoration: none;
+      backdrop-filter: blur(6px);
+      transition: color 0.15s, background 0.15s;
+    }
+    #back:hover {
+      color: rgba(255,255,255,0.9);
+      background: rgba(0,0,0,0.65);
+    }
+
+    /* p5 canvas centred */
+    canvas {
+      display: block;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+
+  <a id="back" href="index.html">← Back</a>
+
+  <!-- p5.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <!-- Sketch code -->
+  <script src="sketches/sweetzone.js"></script>
+
+</body>
+</html>

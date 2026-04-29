@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Case Formulations — Pain Visuals</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* overflow:visible needed — this sketch creates DOM menus/panels via p5 */
+    html, body { width: 100%; height: 100%; background: #f6f6fc; overflow: auto; }
+
+    #back {
+      position: fixed;
+      top: 14px;
+      /* Pushed right to avoid clash with the sketch's own Networks button at left:14px */
+      left: 220px;
+      z-index: 2000;
+      font-family: 'DM Mono', monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(30,30,60,0.6);
+      background: rgba(255,255,255,0.7);
+      border: 0.5px solid rgba(30,30,60,0.15);
+      border-radius: 100px;
+      padding: 6px 14px;
+      text-decoration: none;
+      backdrop-filter: blur(6px);
+      transition: color 0.15s, background 0.15s;
+    }
+    #back:hover {
+      color: rgba(30,30,60,0.95);
+      background: rgba(255,255,255,0.95);
+    }
+
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+
+  <a id="back" href="index.html">← Back</a>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+  <script src="sketches/caseformulations.js"></script>
+
+</body>
+</html>

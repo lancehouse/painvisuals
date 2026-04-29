@@ -7,263 +7,382 @@
   <meta name="description" content="Interactive visualisations for pain education, built with p5.js." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:           #0c0e14;
-      --surface:      #13161f;
-      --surface2:     #1a1e2b;
-      --border:       rgba(255,255,255,0.07);
-      --border2:      rgba(255,255,255,0.14);
-      --text:         #dde1ed;
-      --text-muted:   #6b7291;
-      --accent:       #4f8ef7;
-      --radius:       14px;
-      --font-sans:    'DM Sans', sans-serif;
-      --font-mono:    'DM Mono', monospace;
+      --bg:        #0c0e14;
+      --surface:   #12151f;
+      --surface2:  #181c2a;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.13);
+      --text:      #cdd2e8;
+      --muted:     #5c6480;
+      --accent:    #4f8ef7;
+      --accent2:   #7b6ef7;
+      --radius:    14px;
+      --sans:      'DM Sans', sans-serif;
+      --serif:     'Fraunces', serif;
+      --mono:      'DM Mono', monospace;
     }
 
     html { font-size: 16px; }
 
     body {
-      font-family: var(--font-sans);
+      font-family: var(--sans);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
     }
 
+    /* ── Header ──────────────────────────────── */
     header {
-      padding: 3rem 2rem 2rem;
-      border-bottom: 0.5px solid var(--border);
+      padding: 4rem 2.5rem 3rem;
+      max-width: 1000px;
+      margin: 0 auto;
       position: relative;
-      overflow: hidden;
     }
 
-    header::before {
-      content: '';
-      position: absolute;
-      top: -80px; left: -80px;
-      width: 360px; height: 360px;
-      background: radial-gradient(circle, rgba(79,142,247,0.05) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    .header-inner { max-width: 900px; margin: 0 auto; position: relative; }
-
-    .site-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.12em;
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
       color: var(--accent);
-      margin-bottom: 10px;
+      margin-bottom: 1rem;
     }
 
     h1 {
-      font-size: clamp(26px, 5vw, 38px);
+      font-family: var(--serif);
+      font-size: clamp(36px, 6vw, 56px);
       font-weight: 300;
-      letter-spacing: -0.5px;
-      color: #f0f3fc;
-      line-height: 1.1;
+      color: #eef1fc;
+      line-height: 1.05;
+      letter-spacing: -1px;
     }
 
-    h1 span { font-weight: 500; }
+    h1 em {
+      font-style: italic;
+      color: #a0b4f8;
+    }
 
-    .site-subtitle {
+    .tagline {
       font-size: 15px;
-      color: var(--text-muted);
-      margin-top: 8px;
+      color: var(--muted);
+      margin-top: 0.75rem;
       font-weight: 300;
+      letter-spacing: 0.01em;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 1.25rem;
-      padding: 2rem;
-      max-width: 900px;
-      margin: 0 auto;
+    /* ── Divider ─────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 0.5px solid var(--border);
+      margin: 0 2.5rem;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
+    /* ── Sketch rows ─────────────────────────── */
     /*
-      CARDS — each is a link to the OpenProcessing sketch.
-      To change a sketch: update the href on the <a class="card"> element.
-      To change a thumbnail: replace the image file in your GitHub repo root.
+      ADDING A NEW SKETCH:
+      Copy a .sketch-row block in the HTML below.
+      Update: href on the <a> card link, thumbnail src, tag, title, desc, and link hrefs.
     */
-    a.card {
-      display: flex;
-      flex-direction: column;
-      background: var(--surface);
+    .sketches {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 2.5rem 4rem;
+    }
+
+    .sketch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 260px;
       border: 0.5px solid var(--border);
       border-radius: var(--radius);
       overflow: hidden;
-      text-decoration: none;
-      color: inherit;
-      transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      margin-top: 1.5rem;
+      transition: border-color 0.2s ease;
     }
 
-    a.card:hover {
-      border-color: var(--border2);
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
-    }
+    .sketch-row:hover { border-color: var(--border2); }
 
-    .card-thumb-wrap {
-      overflow: hidden;
+    /* Left: thumbnail / launch area */
+    a.sketch-thumb {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       background: #080a0f;
-      border-bottom: 0.5px solid var(--border);
-      aspect-ratio: 4/3;
+      border-right: 0.5px solid var(--border);
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      transition: background 0.2s ease;
     }
 
-    .card-thumb {
+    a.sketch-thumb:hover { background: #0a0d16; }
+
+    a.sketch-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
-      transition: transform 0.3s ease;
+      opacity: 0.9;
+      transition: opacity 0.25s ease, transform 0.3s ease;
     }
 
-    a.card:hover .card-thumb { transform: scale(1.03); }
+    a.sketch-thumb:hover img {
+      opacity: 1;
+      transform: scale(1.02);
+    }
 
-    .card-body {
-      padding: 1rem 1.25rem 0.9rem;
+    .launch-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      background: rgba(8,10,20,0.55);
+    }
+
+    a.sketch-thumb:hover .launch-overlay { opacity: 1; }
+
+    .launch-pill {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(79,142,247,0.85);
+      border-radius: 100px;
+      padding: 7px 18px;
+    }
+
+    /* Right: info panel */
+    .sketch-info {
+      background: var(--surface);
+      padding: 1.75rem 1.75rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .sketch-tag {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .sketch-title {
+      font-family: var(--serif);
+      font-size: 22px;
+      font-weight: 300;
+      color: #eef1fc;
+      letter-spacing: -0.3px;
+      margin-bottom: 10px;
+    }
+
+    .sketch-desc {
+      font-size: 13.5px;
+      color: #7a84a8;
+      line-height: 1.65;
+      font-weight: 300;
       flex: 1;
     }
 
-    .card-tag {
-      font-family: var(--font-mono);
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 6px;
-    }
-
-    .card-title {
-      font-size: 16px;
-      font-weight: 500;
-      color: #edf0fc;
-      letter-spacing: -0.2px;
-    }
-
-    .card-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 3px;
-      font-weight: 300;
-      line-height: 1.5;
-    }
-
-    .card-footer {
-      padding: 0.65rem 1.25rem;
+    /* Link buttons */
+    .sketch-links {
+      margin-top: 1.25rem;
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /*
+      TO ADD A MANUAL OR THEORY LINK:
+      Replace the href="#" with your actual URL.
+      Remove the pointer-events:none and opacity:0.4 once the link is live.
+    */
+    .link-btn {
+      display: flex;
       align-items: center;
-      border-top: 0.5px solid var(--border);
-      background: var(--surface2);
-    }
-
-    .sketch-id {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      color: #3a4060;
-    }
-
-    .card-cta {
+      gap: 8px;
       font-size: 12px;
+      font-family: var(--sans);
       color: var(--accent);
+      background: rgba(79,142,247,0.08);
+      border: 0.5px solid rgba(79,142,247,0.22);
+      border-radius: 8px;
+      padding: 7px 12px;
+      text-decoration: none;
+      transition: background 0.15s ease, border-color 0.15s ease;
     }
 
+    .link-btn:hover {
+      background: rgba(79,142,247,0.14);
+      border-color: rgba(79,142,247,0.38);
+    }
+
+    .link-btn.secondary {
+      color: var(--muted);
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(255,255,255,0.08);
+    }
+
+    .link-btn.secondary:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.14);
+      color: var(--text);
+    }
+
+    .link-btn.placeholder {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    .link-icon {
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* ── Footer ──────────────────────────────── */
     footer {
       text-align: center;
       padding: 2rem;
-      font-size: 12px;
-      color: #2e3350;
+      font-size: 11px;
+      color: #252b40;
       border-top: 0.5px solid var(--border);
-      font-family: var(--font-mono);
-      margin-top: 1rem;
+      font-family: var(--mono);
     }
 
-    @media (max-width: 600px) {
-      .grid { padding: 1rem; gap: 1rem; }
-      header { padding: 2rem 1rem 1.5rem; }
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 640px) {
+      header { padding: 2.5rem 1.25rem 2rem; }
+      .divider, .sketches { padding-left: 1.25rem; padding-right: 1.25rem; }
+      .sketch-row { grid-template-columns: 1fr; }
+      a.sketch-thumb { min-height: 180px; border-right: none; border-bottom: 0.5px solid var(--border); }
+      .sketch-info { padding: 1.25rem; }
     }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="header-inner">
-      <div class="site-eyebrow">p5.js · OpenProcessing</div>
-      <h1>Pain <span>Visuals</span></h1>
-      <p class="site-subtitle">Interactive visualisations for pain education — click any sketch to open</p>
-    </div>
+    <div class="eyebrow">p5.js · pain education</div>
+    <h1>Pain <em>Visuals</em></h1>
+    <p class="tagline">Interactive visualisations for clinical pain education — click any sketch to open</p>
   </header>
 
-  <main class="grid">
+  <hr class="divider" />
 
-    <!-- ══════════════════════════════════════
+  <main class="sketches">
+
+    <!-- ══════════════════════════════════════════════════════
          SKETCH 1 — Sweet Zone
-         Sketch ID: 2730744
-         Thumbnail file: sweetzone.jpg  (upload to GitHub repo root)
-    ══════════════════════════════════════ -->
-    <a class="card" href="https://openprocessing.org/sketch/2730744" target="_blank" rel="noopener">
-      <div class="card-thumb-wrap">
-        <img class="card-thumb" src="sweetzone.jpg" alt="Sweet Zone sketch thumbnail" />
+         Page: sweetzone.html  |  Script: sketches/sweetzone.js
+         Thumbnail: sweetzone.jpg
+         To update sketch: edit sketches/sweetzone.js and git push
+    ═══════════════════════════════════════════════════════ -->
+    <div class="sketch-row">
+      <a class="sketch-thumb" href="sweetzone.html">
+        <img src="sweetzone.jpg" alt="Sweet Zone sketch" />
+        <div class="launch-overlay">
+          <span class="launch-pill">Open sketch</span>
+        </div>
+      </a>
+      <div class="sketch-info">
+        <div>
+          <div class="sketch-tag">Zone · Dial</div>
+          <div class="sketch-title">Sweet Zone</div>
+          <p class="sketch-desc">
+            A vintage VU-style half-moon meter for visualising the therapeutic sweet zone between too little and too much demand. The arc label is editable — adapt it to any patient context in real time. Drag the boundary handles to adjust zone widths, and use the needle to show the current position.
+          </p>
+        </div>
+        <div class="sketch-links">
+          <a class="link-btn placeholder" href="#">
+            <span class="link-icon">📄</span> Operation manual
+          </a>
+          <a class="link-btn secondary placeholder" href="#">
+            <span class="link-icon">📖</span> Background &amp; theory
+          </a>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="card-tag">Zone</div>
-        <div class="card-title">Sweet Zone</div>
-        <p class="card-desc">Vintage VU-style half-moon meter with editable labels</p>
-      </div>
-      <div class="card-footer">
-        <span class="sketch-id">#2730744</span>
-        <span class="card-cta">Open sketch ↗</span>
-      </div>
-    </a>
+    </div>
 
-    <!-- ══════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════
          SKETCH 2 — Protectometer
-         Sketch ID: 2719392
-         Thumbnail file: protectometer.jpg  (upload to GitHub repo root)
-    ══════════════════════════════════════ -->
-    <a class="card" href="https://openprocessing.org/sketch/2926124" target="_blank" rel="noopener">
-      <div class="card-thumb-wrap">
-        <img class="card-thumb" src="protectometer.jpg" alt="Protectometer sketch thumbnail" />
+         Page: protectometer.html  |  Script: sketches/protectometer.js
+         Thumbnail: protectometer.jpg
+         To update sketch: edit sketches/protectometer.js and git push
+    ═══════════════════════════════════════════════════════ -->
+    <div class="sketch-row">
+      <a class="sketch-thumb" href="protectometer.html">
+        <img src="protectometer.jpg" alt="Protectometer sketch" />
+        <div class="launch-overlay">
+          <span class="launch-pill">Open sketch</span>
+        </div>
+      </a>
+      <div class="sketch-info">
+        <div>
+          <div class="sketch-tag">Meter · Network</div>
+          <div class="sketch-title">Protectometer</div>
+          <p class="sketch-desc">
+            An interactive pain sensitivity meter based on Moseley and Butler's Protectometer model. Five sliders represent contributing factors, combined with a Lorenz attractor system to model dynamic sensitivity. Supports multiple presets (Pain, Anxiety, Fatigue, PTSD) and two visual themes. All labels are editable.
+          </p>
+        </div>
+        <div class="sketch-links">
+          <a class="link-btn placeholder" href="#">
+            <span class="link-icon">📄</span> Operation manual
+          </a>
+          <a class="link-btn secondary placeholder" href="#">
+            <span class="link-icon">📖</span> Background &amp; theory
+          </a>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="card-tag">Meter</div>
-        <div class="card-title">Protectometer</div>
-        <p class="card-desc">Interactive pain sensitivity meter with Lorenz system</p>
-      </div>
-      <div class="card-footer">
-        <span class="sketch-id">#2926124</span>
-        <span class="card-cta">Open sketch ↗</span>
-      </div>
-    </a>
+    </div>
 
-    <!-- ══════════════════════════════════════
+    <!-- ══════════════════════════════════════════════════════
          SKETCH 3 — Case Formulations
-         Sketch ID: 2926047
-         Thumbnail file: caseformulations.jpg  (upload to GitHub repo root)
-    ══════════════════════════════════════ -->
-    <a class="card" href="https://openprocessing.org/sketch/2926047" target="_blank" rel="noopener">
-      <div class="card-thumb-wrap">
-        <img class="card-thumb" src="caseformulations.jpg" alt="Case Formulations sketch thumbnail" />
+         Page: caseformulations.html  |  Script: sketches/caseformulations.js
+         Thumbnail: caseformulations.jpg
+         To update sketch: edit sketches/caseformulations.js and git push
+    ═══════════════════════════════════════════════════════ -->
+    <div class="sketch-row">
+      <a class="sketch-thumb" href="caseformulations.html">
+        <img src="caseformulations.jpg" alt="Case Formulations sketch" />
+        <div class="launch-overlay">
+          <span class="launch-pill">Open sketch</span>
+        </div>
+      </a>
+      <div class="sketch-info">
+        <div>
+          <div class="sketch-tag">Network · Analysis</div>
+          <div class="sketch-title">Case Formulations</div>
+          <p class="sketch-desc">
+            A clinical network analysis tool for building personalised pain maps. Add nodes representing factors in a patient's pain journey, connect them with facilitating or inhibiting links, and use Analyse mode to explore how changes in one area ripple through the network. Includes built-in presets and save/load support.
+          </p>
+        </div>
+        <div class="sketch-links">
+          <a class="link-btn placeholder" href="#">
+            <span class="link-icon">📄</span> Operation manual
+          </a>
+          <a class="link-btn secondary placeholder" href="#">
+            <span class="link-icon">📖</span> Background &amp; theory
+          </a>
+        </div>
       </div>
-      <div class="card-body">
-        <div class="card-tag">Network</div>
-        <div class="card-title">Case Formulations</div>
-        <p class="card-desc">Interactive pain network builder</p>
-      </div>
-      <div class="card-footer">
-        <span class="sketch-id">#2926047</span>
-        <span class="card-cta">Open sketch ↗</span>
-      </div>
-    </a>
+    </div>
 
   </main>
 
