@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pain Network Builder — Background & Theory · Pain Visuals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0e14; --surface: #12151f; --border: rgba(255,255,255,0.07);
+      --text: #cdd2e8; --muted: #5c6480; --accent: #4f8ef7;
+      --sans: 'DM Sans', sans-serif; --serif: 'Fraunces', serif; --mono: 'DM Mono', monospace;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    nav { padding: 1.25rem 2.5rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+    .nav-back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-back:hover { color: var(--text); }
+    .nav-sep { color: var(--muted); }
+    .nav-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+    .content { max-width: 720px; margin: 0 auto; padding: 3.5rem 2.5rem 5rem; }
+    .page-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+    h1 { font-family: var(--serif); font-size: clamp(28px, 4vw, 40px); font-weight: 300; color: #eef1fc; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 1rem; }
+    .subtitle { font-size: 15px; color: var(--muted); font-weight: 300; margin-bottom: 2.5rem; line-height: 1.6; }
+    .disclaimer { background: rgba(79,142,247,0.07); border: 0.5px solid rgba(79,142,247,0.25); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2.5rem; font-size: 13.5px; color: #8aabf0; line-height: 1.6; }
+    .disclaimer em { font-style: italic; opacity: 0.7; }
+    h2 { font-family: var(--serif); font-size: 22px; font-weight: 300; color: #eef1fc; letter-spacing: -0.2px; margin: 2.5rem 0 0.75rem; padding-top: 2rem; border-top: 0.5px solid var(--border); }
+    h3 { font-family: var(--sans); font-size: 14px; font-weight: 500; color: #a0b0e0; letter-spacing: 0.04em; text-transform: uppercase; margin: 1.5rem 0 0.5rem; }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    p { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.25rem; }
+    li { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 0.35rem; }
+    strong { font-weight: 500; color: #dde3f8; }
+    em { font-style: italic; }
+    blockquote { margin: 1rem 0 1.5rem; padding: 0.75rem 1.25rem; border-left: 2px solid var(--accent); background: rgba(79,142,247,0.05); border-radius: 0 8px 8px 0; font-size: 14px; color: #8aabf0; font-style: italic; line-height: 1.7; }
+    .part-header { margin: 3rem 0 0; padding: 1.5rem; background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; }
+    .part-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .part-title { font-family: var(--serif); font-size: 20px; font-weight: 300; color: #eef1fc; }
+    .warning-box { background: rgba(240,92,92,0.07); border: 0.5px solid rgba(240,92,92,0.25); border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0 1.5rem; font-size: 14px; color: #f08080; line-height: 1.65; }
+    hr { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+    .ai-note { margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 12px; color: var(--muted); font-style: italic; }
+    @media (max-width: 600px) { nav, .content { padding-left: 1.25rem; padding-right: 1.25rem; } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-back" href="index.html">← Pain Visuals</a>
+    <span class="nav-sep">/</span>
+    <span class="nav-title">Case Formulations — Background & Theory</span>
+  </nav>
+
+  <div class="content">
+
+    <div class="page-eyebrow">Technical &amp; clinical background</div>
+    <h1>Pain Network Builder</h1>
+    <p class="subtitle">A clinical case formulation tool built on interactive network graphs, with an integrated belief propagation engine drawing loosely from Bayesian network theory.</p>
+
+    <div class="disclaimer">
+      This tool is designed to support shared decision-making conversations between clinicians and patients — making implicit clinical reasoning about pain interactions visible, explorable, and testable in real time. <em>This tool and text has been built with AI assistance.</em>
+    </div>
+
+    <!-- PART 1 -->
+    <div class="part-header">
+      <div class="part-label">Part 1</div>
+      <div class="part-title">The Network Model</div>
+    </div>
+
+    <h3>Nodes</h3>
+    <p>Each node represents a <strong>factor in the patient's pain experience</strong> — a cause, consequence, or maintaining variable. Nodes are categorised as:</p>
+    <ul>
+      <li><strong>Origin</strong> (orange) — the initiating event or trigger</li>
+      <li><strong>Pain</strong> (red) — the central hub, typically the presenting complaint</li>
+      <li><strong>Affect</strong> (blue) — downstream factors that Pain influences, or that influence Pain</li>
+    </ul>
+    <p>Node <strong>size</strong> carries analytical meaning: larger nodes are assigned a higher <strong>prior probability</strong> — representing the clinician's or patient's assessment that this factor is more significant or prevalent for this individual before any specific evidence is introduced.</p>
+
+    <h3>Links (Edges)</h3>
+    <p>Links represent <strong>directed relationships</strong> between nodes. Each link has four properties:</p>
+    <ul>
+      <li><strong>Type</strong> — <em>more</em> (facilitate) or <em>less</em> (inhibit): does this factor increase or decrease the other?</li>
+      <li><strong>Direction</strong> — unidirectional (→), reverse (←), or bidirectional (↔)</li>
+      <li><strong>Thickness</strong> — the relative strength of the relationship; thicker links carry more influence in the propagation model</li>
+      <li><strong>Curve</strong> — a visual property only, used to reduce overlap in complex networks</li>
+    </ul>
+    <p>The distinction between <em>more</em> and <em>less</em> maps onto the clinical concept of <strong>facilitatory and inhibitory pathways</strong> in pain neuroscience — for example, catastrophising facilitates pain amplification, while social support and physical activity may inhibit it.</p>
+
+    <!-- PART 2 -->
+    <div class="part-header">
+      <div class="part-label">Part 2</div>
+      <div class="part-title">Clinical Rationale for the Network Approach</div>
+    </div>
+
+    <p>Chronic pain is now well understood to be a <strong>biopsychosocial phenomenon</strong> — not a simple linear input-output system, but a dynamic network of interacting biological, psychological, and social factors. This has important clinical implications that a network model captures naturally:</p>
+
+    <p><strong>Feedback loops</strong> — pain disrupts sleep, and poor sleep amplifies pain. These bidirectional relationships mean that intervening in one factor can have cascading effects throughout the whole system — sometimes expected, sometimes surprising.</p>
+
+    <p><strong>Non-linearity</strong> — small changes in one factor can produce disproportionately large effects elsewhere when feedback loops are involved. Conversely, large interventions can appear to have little effect if they are counteracted by other parts of the network.</p>
+
+    <p><strong>Multifactorial maintenance</strong> — the network approach makes visible how multiple interacting factors can maintain a pain state even after the original injury has resolved. This is particularly relevant in nociplastic pain presentations where central sensitisation, psychological factors, and social context interact.</p>
+
+    <p><strong>Case formulation</strong> — rather than selecting a single theoretical model, the tool allows clinicians and patients to collaboratively construct a bespoke formulation that reflects the individual's specific experience, with the ability to add, remove, and reconfigure connections as understanding develops over time.</p>
+
+    <!-- PART 3 -->
+    <div class="part-header">
+      <div class="part-label">Part 3</div>
+      <div class="part-title">The Bayesian Analysis Component</div>
+    </div>
+
+    <h3>What is a Bayesian Network?</h3>
+    <p>A Bayesian network is a mathematical framework for representing <strong>probabilistic relationships</strong> between variables. Each node holds a probability — the likelihood that this variable is in an active or elevated state — and these probabilities update based on observed evidence flowing through the network according to Bayes' theorem.</p>
+    <p>In a fully specified Bayesian network, each node would require a <strong>conditional probability table (CPT)</strong> — a complete specification of the probability of that node being active given every possible combination of its parent nodes' states. For even a moderately complex pain network this would require hundreds of values, which is neither practical nor clinically meaningful given the current state of evidence. The approach taken here is deliberately simplified.</p>
+
+    <h3>The Noisy-OR Model</h3>
+    <p>Rather than requiring full CPTs, the tool uses a <strong>noisy-OR approximation</strong> — a well-established simplification used in medical diagnostic Bayesian networks (including early versions of systems like QMR-DT).</p>
+    <p>The noisy-OR model rests on a key assumption: each parent node can independently cause the child node to become active. The probability that a child node is not activated is the product of the probabilities that each of its parents individually failed to activate it:</p>
+    <blockquote>
+      P(child not activated) = ∏ (1 − parent_belief × edge_weight)<br />
+      P(child activated) = 1 − P(child not activated)
+    </blockquote>
+    <p>This means that <strong>multiple facilitatory inputs compound correctly</strong> — two strong facilitatory parents push the child much further than one alone. Conversely, a strong inhibitory input suppresses the child's activation by reducing the effective belief of the incoming signal.</p>
+
+    <h3>Priors</h3>
+    <p>Every node starts with a <strong>prior probability</strong> — its baseline likelihood of being active before any specific evidence is introduced. In this tool, the prior is derived from node size, encoding the clinical judgement that a larger node represents a more prevalent or significant factor for this patient. The prior acts as a floor: even with no active inputs, the node sits at its prior level.</p>
+
+    <h3>Evidence and Observation</h3>
+    <p>When a clinician or patient introduces a signal to a node using the keyboard inputs, that node becomes <strong>observed</strong> — pinned at its assigned belief level. This is analogous to <strong>conditioning on evidence</strong> in a Bayesian network: the observed node represents a known fact and the rest of the network updates in response. Observed nodes send signals downstream but do not receive updates from propagation.</p>
+
+    <h3>Propagation</h3>
+    <p>The model runs <strong>20 iterative passes</strong> through the network after each input. This allows belief to travel through chains of connections and allows bidirectional relationships to reach a stable equilibrium. A <strong>loop damping</strong> factor (0.85) is applied to all edge weights to prevent feedback loops from inflating beliefs without bound.</p>
+
+    <h3>What the Numbers Mean — and What They Don't</h3>
+    <p>The belief values displayed represent <strong>relative influence scores</strong>, not calibrated clinical probabilities. A Pain node at 78% does not mean there is a 78% probability of the patient being in pain — it means the network model, given the inputs provided, suggests Pain is substantially elevated relative to its prior.</p>
+    <p>What is clinically meaningful is:</p>
+    <ul>
+      <li><strong>The direction of change</strong> — did a factor go up or down in response to an intervention?</li>
+      <li><strong>The relative magnitude</strong> — which factors responded most strongly?</li>
+      <li><strong>The pattern of ripple effects</strong> — which unexpected nodes were affected?</li>
+      <li><strong>The presence of oscillation</strong> — does the system hunt around an equilibrium, suggesting competing feedback loops?</li>
+    </ul>
+    <p>When a clinician introduces a facilitatory signal and observes Pain initially drop, then partly recover, then settle at a new lower level — this oscillation reflects a genuine property of tightly coupled feedback systems: <strong>interventions in one part of a network have non-linear, time-dependent effects on the whole</strong>. This is one of the most important clinical messages the tool conveys.</p>
+
+    <!-- PART 4 -->
+    <div class="part-header">
+      <div class="part-label">Part 4</div>
+      <div class="part-title">What This Is Not</div>
+    </div>
+
+    <div class="warning-box">
+      It is important to be clear about the limitations of this model, particularly when used in a clinical setting.
+    </div>
+
+    <p><strong>This is not a diagnostic tool.</strong> The network and its analysis cannot determine what is causing a patient's pain, predict outcomes, or guide treatment decisions in any formal sense.</p>
+    <p><strong>This is not a validated Bayesian network.</strong> A true Bayesian network requires empirically derived conditional probabilities, expert elicitation, and validation against clinical data. The parameters here — edge weights, priors, damping factors — reflect clinical judgement and subjective experience, not measured probabilities.</p>
+    <p><strong>This is not a simulation of neurobiological processes.</strong> The propagation model does not represent actual neural signalling, nociceptive processing, or psychological mechanisms. It is a metaphor — a way of making the concept of interconnection and mutual influence visible and explorable.</p>
+    <p><strong>The analysis is forwards-only.</strong> The model propagates evidence from observed nodes downstream. It does not perform backwards inference — it cannot reason from an observed effect (high Pain) back to the most likely causes. Full backwards inference would require a complete Bayesian inference engine, which is beyond the scope of this tool.</p>
+
+    <!-- PART 5 -->
+    <div class="part-header">
+      <div class="part-label">Part 5</div>
+      <div class="part-title">Intended Clinical Use</div>
+    </div>
+
+    <p><strong>Case formulation</strong> — collaboratively building the network with the patient makes implicit clinical reasoning explicit and shared. Patients often report that seeing their experience mapped visually helps them feel understood and helps them understand the interconnected nature of their pain.</p>
+    <p><strong>Psychoeducation</strong> — the Analyse feature provides an interactive demonstration of concepts from pain neuroscience — central sensitisation, the role of psychological and social factors, the importance of activity and sleep — without requiring technical language.</p>
+    <p><strong>Treatment planning</strong> — by modelling proposed interventions the tool can support shared decision-making conversations about where to focus treatment effort.</p>
+    <p><strong>Monitoring</strong> — returning to the tool at subsequent appointments and adjusting the network based on the patient's evolving experience can support reflection on progress and treatment response.</p>
+
+    <hr />
+
+    <p>The Pain Network Builder combines interactive network visualisation with a simplified Bayesian-inspired propagation model to create a tool that is clinically useful without claiming mathematical precision. It makes visible the interconnected, non-linear nature of chronic pain — and in doing so, communicates one of the most important messages in contemporary pain science: that pain is a system, not a symptom, and that understanding it requires thinking about the whole person.</p>
+
+    <p class="ai-note">This tool and text has been built with AI assistance.</p>
+
+  </div>
+
+</body>
+</html>

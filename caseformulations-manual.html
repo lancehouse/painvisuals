@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pain Network Builder — User Manual · Pain Visuals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0e14; --surface: #12151f; --border: rgba(255,255,255,0.07);
+      --text: #cdd2e8; --muted: #5c6480; --accent: #4f8ef7;
+      --sans: 'DM Sans', sans-serif; --serif: 'Fraunces', serif; --mono: 'DM Mono', monospace;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    nav { padding: 1.25rem 2.5rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+    .nav-back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-back:hover { color: var(--text); }
+    .nav-sep { color: var(--muted); }
+    .nav-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+    .content { max-width: 720px; margin: 0 auto; padding: 3.5rem 2.5rem 5rem; }
+    .page-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+    h1 { font-family: var(--serif); font-size: clamp(28px, 4vw, 40px); font-weight: 300; color: #eef1fc; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 2.5rem; }
+    .disclaimer { background: rgba(79,142,247,0.07); border: 0.5px solid rgba(79,142,247,0.25); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2.5rem; font-size: 13.5px; color: #8aabf0; line-height: 1.6; }
+    .disclaimer em { font-style: italic; opacity: 0.7; }
+    h2 { font-family: var(--serif); font-size: 22px; font-weight: 300; color: #eef1fc; letter-spacing: -0.2px; margin: 2.5rem 0 0.75rem; padding-top: 2rem; border-top: 0.5px solid var(--border); }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    p { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.25rem; }
+    li { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 0.35rem; }
+    strong { font-weight: 500; color: #dde3f8; }
+    .table-wrap { overflow-x: auto; margin: 1rem 0 1.5rem; border: 0.5px solid var(--border); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 0.5px solid var(--border); }
+    td { padding: 10px 14px; border-bottom: 0.5px solid rgba(255,255,255,0.04); color: var(--text); font-weight: 300; line-height: 1.5; }
+    tr:last-child td { border-bottom: none; }
+    .tag-more { color: #f05c5c; font-weight: 500; }
+    .tag-less { color: #40d0d0; font-weight: 500; }
+    .ai-note { margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 12px; color: var(--muted); font-style: italic; }
+    hr { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+    @media (max-width: 600px) { nav, .content { padding-left: 1.25rem; padding-right: 1.25rem; } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-back" href="index.html">← Pain Visuals</a>
+    <span class="nav-sep">/</span>
+    <span class="nav-title">Case Formulations — Manual</span>
+  </nav>
+
+  <div class="content">
+
+    <div class="page-eyebrow">Operation manual</div>
+    <h1>Pain Network Builder</h1>
+
+    <div class="disclaimer">
+      This tool is designed to be used together with your clinician. The numbers and colours are a simplified model, not a medical measurement — use this as a conversation starter, not a diagnosis. <em>This tool and text has been built with AI assistance.</em>
+    </div>
+
+    <h2>What is this tool?</h2>
+    <p>The Pain Network Builder is a visual tool designed to be used together with your clinician. It helps you map out the things that are part of your pain experience — what started it, what it affects, and how those things connect to each other. You can then use the Analyse feature to explore how changes in one part of your life might ripple through the rest of the network.</p>
+
+    <hr />
+
+    <h2>Getting started</h2>
+    <p>When you first open the tool you'll be asked two questions at the bottom of the screen:</p>
+    <p><strong>"How did your pain begin?"</strong> — Type your answer and press Add. This creates your first node (a box or circle representing that factor) and automatically connects it to a central <strong>Pain</strong> node.</p>
+    <p><strong>"What does this affect?"</strong> — Type each thing your pain affects and press Add. Each answer becomes a new node connected to Pain. Keep adding as many as you like — sleep, work, mood, relationships, activity, and so on.</p>
+    <p>You can also load one of the ready-made clinical networks from the <strong>☰ Networks</strong> menu if you'd prefer to start from an existing template.</p>
+
+    <hr />
+
+    <h2>Moving around</h2>
+    <ul>
+      <li><strong>Drag any node</strong> to reposition it</li>
+      <li><strong>Scroll on empty space</strong> to zoom in and out</li>
+      <li><strong>Drag on empty space</strong> to pan the whole network</li>
+      <li><strong>Scroll over a node</strong> to resize it</li>
+      <li><strong>Scroll over a link</strong> to make it thicker or thinner</li>
+    </ul>
+
+    <hr />
+
+    <h2>Editing your network</h2>
+    <p><strong>Double-click any node</strong> to open its edit menu. From here you can:</p>
+    <ul>
+      <li><strong>Rename the node</strong> — click the name field and type a new one</li>
+      <li><strong>Change its colour</strong> — click one of the five colour swatches (red, orange, green, teal, blue)</li>
+      <li><strong>Manage links</strong> — each other node in the network is listed. Click the badge next to it to cycle through: <strong>＋ connect</strong>, <strong>● more</strong> (this factor increases the other), or <strong>● less</strong> (this factor reduces the other)</li>
+      <li><strong>Set arrow direction</strong> — click the arrow symbol (→ ← ↔) to choose whether the influence flows to, from, or both ways between the two nodes</li>
+      <li><strong>Add a connected node</strong> — type a name at the bottom of the menu to create a new node linked directly to this one, rather than back to Pain</li>
+      <li><strong>Delete the node</strong> — click 🗑 (you'll be asked to confirm)</li>
+    </ul>
+    <p><strong>Drag any arrow</strong> to bend it into a curve — useful when arrows overlap.</p>
+
+    <hr />
+
+    <h2>What the links mean</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Link type</th><th>Colour</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="tag-more">More</span></td><td>Red</td><td>This factor increases or worsens the other</td></tr>
+          <tr><td><span class="tag-less">Less</span></td><td>Cyan</td><td>This factor reduces or improves the other</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Thickness</strong> represents how strongly one factor influences the other — scroll over a link to adjust it.</p>
+    <p><strong>Arrow direction</strong> shows which way the influence flows. Many relationships in pain are bidirectional — poor sleep worsens pain, and pain worsens sleep.</p>
+
+    <hr />
+
+    <h2>Node size and what it means</h2>
+    <p><strong>Node size has meaning in the analysis.</strong> A larger node represents a factor that is more significant or prevalent for you before any specific input. You can scroll over any node to resize it. This affects the starting point of the analysis.</p>
+
+    <hr />
+
+    <h2>The Analyse feature</h2>
+    <p>The Analyse feature is an <strong>educational tool</strong>, not a medical measurement. The colours and percentages show a simplified model of how factors might influence each other based on current understanding of pain science. Every person's experience is unique. This tool is far from perfect or complete, and may at times behave unexpectedly. Use this as a conversation starter with your clinician — not as a diagnosis or prediction.</p>
+    <p>Click <strong>⚡ Analyse</strong> in the top bar to open the Analyse panel, then switch the mode <strong>ON</strong>.</p>
+    <p>When analyse mode is active:</p>
+    <ul>
+      <li>Every node changes colour on a scale from <strong style="color:#40d0d0">cyan</strong> (less active / fewer problems) through neutral grey to <strong style="color:#f05c5c">red</strong> (more active / more problems)</li>
+      <li>The <strong>Pain node</strong> shows a dial around its outside that tracks like a clock — starting at the bottom and sweeping clockwise as Pain increases</li>
+    </ul>
+    <p><strong>To explore the network</strong> — hover your mouse over any node, then press:</p>
+    <ul>
+      <li><strong>= or +</strong> to introduce a "more problems" signal to that node</li>
+      <li><strong>−</strong> to introduce a "fewer problems" signal</li>
+    </ul>
+    <p>Press repeatedly to strengthen the effect. Watch how the signal ripples through the connected nodes — some may respond immediately, others after a delay, and some may behave in unexpected ways due to feedback loops.</p>
+    <p><strong>To reset</strong> — click <strong>↺ Reset all beliefs</strong> to return the network to its starting state.</p>
+
+    <hr />
+
+    <h2>Saving and loading your network</h2>
+    <p>Open <strong>☰ Networks</strong> and scroll to <em>Save current network</em>. Type a name and click Save. Your network is stored in your browser and will be available next time you open the tool on the same device.</p>
+    <p>To load a saved network or a built-in clinical template, simply click its name in the Networks menu.</p>
+    <p>To share your exact network layout with your clinician or use it as a starting point for a future session, click <strong>📋 Copy full preset</strong> — this copies the complete network data to your clipboard, which can be pasted into a message or document.</p>
+
+    <p class="ai-note">This tool and text has been built with AI assistance.</p>
+
+  </div>
+
+</body>
+</html>
