@@ -186,6 +186,27 @@
       margin-bottom: 8px;
     }
 
+    .sketch-tag-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .sketch-tag-row .sketch-tag { margin-bottom: 0; }
+
+    .clinician-badge {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #5fd696;
+      background: rgba(95,214,150,0.1);
+      border: 0.5px solid rgba(95,214,150,0.3);
+      border-radius: 100px;
+      padding: 2px 8px;
+    }
+
     .sketch-title {
       font-family: var(--serif);
       font-size: 22px;
@@ -381,6 +402,38 @@
           </a>
           <a class="link-btn secondary" href="caseformulations-background.html">
             <span class="link-icon">📖</span> Background &amp; theory
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════
+         SKETCH 4 — PhysioKB
+         Page: physiokb.html  |  Source: ~/Projects/kb (separate repo)
+         Thumbnail: physiokb.png
+         To update: regenerate kb.html in ~/Projects/kb and copy over physiokb.html
+    ═══════════════════════════════════════════════════════ -->
+    <div class="sketch-row">
+      <a class="sketch-thumb" href="physiokb.html">
+        <img src="physiokb.png" alt="PhysioKB clinical reference tool" />
+        <div class="launch-overlay">
+          <span class="launch-pill">Open tool</span>
+        </div>
+      </a>
+      <div class="sketch-info">
+        <div>
+          <div class="sketch-tag-row">
+            <div class="sketch-tag">Reference · Clinical</div>
+            <div class="clinician-badge">For clinicians</div>
+          </div>
+          <div class="sketch-title">PhysioKB</div>
+          <p class="sketch-desc">
+            A searchable clinical reference collating musculoskeletal special tests, diagnostic clusters (clinical prediction rules), and subjective/clinical-reasoning guidance — drawing on Physiopedia and published clinical literature. Built for physiotherapists and other MSK clinicians, not patients.
+          </p>
+        </div>
+        <div class="sketch-links">
+          <a class="link-btn secondary" href="physiokb-background.html">
+            <span class="link-icon">📖</span> Background &amp; Sources
           </a>
         </div>
       </div>

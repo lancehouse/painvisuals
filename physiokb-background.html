@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhysioKB — Background & Sources · Pain Visuals</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script>window.va = window.va || function(){(window.vaq=window.vaq||[]).push(arguments);};</script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0e14; --surface: #12151f; --border: rgba(255,255,255,0.07);
+      --text: #cdd2e8; --muted: #5c6480; --accent: #4f8ef7;
+      --sans: 'DM Sans', sans-serif; --serif: 'Fraunces', serif; --mono: 'DM Mono', monospace;
+    }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+    nav { padding: 1.25rem 2.5rem; border-bottom: 0.5px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+    .nav-back { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); text-decoration: none; transition: color 0.15s; }
+    .nav-back:hover { color: var(--text); }
+    .nav-sep { color: var(--muted); }
+    .nav-title { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+    .content { max-width: 720px; margin: 0 auto; padding: 3.5rem 2.5rem 5rem; }
+    .page-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.75rem; }
+    h1 { font-family: var(--serif); font-size: clamp(28px, 4vw, 40px); font-weight: 300; color: #eef1fc; letter-spacing: -0.5px; line-height: 1.1; margin-bottom: 1rem; }
+    .subtitle { font-size: 15px; color: var(--muted); font-weight: 300; margin-bottom: 2.5rem; line-height: 1.6; }
+    .disclaimer { background: rgba(79,142,247,0.07); border: 0.5px solid rgba(79,142,247,0.25); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2.5rem; font-size: 13.5px; color: #8aabf0; line-height: 1.6; }
+    .disclaimer em { font-style: italic; opacity: 0.7; }
+    h2 { font-family: var(--serif); font-size: 22px; font-weight: 300; color: #eef1fc; letter-spacing: -0.2px; margin: 2.5rem 0 0.75rem; padding-top: 2rem; border-top: 0.5px solid var(--border); }
+    h3 { font-family: var(--sans); font-size: 14px; font-weight: 500; color: #a0b0e0; letter-spacing: 0.04em; text-transform: uppercase; margin: 1.5rem 0 0.5rem; }
+    h2:first-of-type { border-top: none; padding-top: 0; }
+    p { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 1rem; }
+    ul, ol { margin: 0.5rem 0 1rem 1.25rem; }
+    li { font-size: 15px; line-height: 1.75; color: var(--text); font-weight: 300; margin-bottom: 0.35rem; }
+    strong { font-weight: 500; color: #dde3f8; }
+    em { font-style: italic; }
+    a.inline-link { color: var(--accent); text-decoration: none; border-bottom: 0.5px solid rgba(79,142,247,0.4); }
+    a.inline-link:hover { border-bottom-color: var(--accent); }
+    blockquote { margin: 1rem 0 1.5rem; padding: 0.75rem 1.25rem; border-left: 2px solid var(--accent); background: rgba(79,142,247,0.05); border-radius: 0 8px 8px 0; font-size: 14px; color: #8aabf0; font-style: italic; line-height: 1.7; }
+    .part-header { margin: 3rem 0 0; padding: 1.5rem; background: var(--surface); border: 0.5px solid var(--border); border-radius: 10px; }
+    .part-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .part-title { font-family: var(--serif); font-size: 20px; font-weight: 300; color: #eef1fc; }
+    .warning-box { background: rgba(240,92,92,0.07); border: 0.5px solid rgba(240,92,92,0.25); border-radius: 10px; padding: 1rem 1.25rem; margin: 1rem 0 1.5rem; font-size: 14px; color: #f08080; line-height: 1.65; }
+    .clinician-tag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #5fd696; background: rgba(95,214,150,0.1); border: 0.5px solid rgba(95,214,150,0.3); border-radius: 100px; padding: 3px 10px; margin-bottom: 1.25rem; }
+    hr { border: none; border-top: 0.5px solid var(--border); margin: 2rem 0; }
+    .ai-note { margin-top: 3rem; padding-top: 1.5rem; border-top: 0.5px solid var(--border); font-size: 12px; color: var(--muted); font-style: italic; }
+    @media (max-width: 600px) { nav, .content { padding-left: 1.25rem; padding-right: 1.25rem; } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-back" href="index.html">← Pain Visuals</a>
+    <span class="nav-sep">/</span>
+    <span class="nav-title">PhysioKB — Background & Sources</span>
+  </nav>
+
+  <div class="content">
+
+    <div class="page-eyebrow">Clinical reference · musculoskeletal &amp; pain physiotherapy</div>
+    <div class="clinician-tag">For clinicians</div>
+    <h1>PhysioKB</h1>
+    <p class="subtitle">A searchable reference collating musculoskeletal special tests, diagnostic and prescriptive clusters (clinical prediction rules), and subjective/clinical-reasoning guidance — built to sit alongside clinical assessment, not replace it.</p>
+
+    <div class="disclaimer">
+      This tool is written for physiotherapists and other musculoskeletal clinicians, not patients. It is an educational reference — a way of collating scattered special-test evidence and clinical reasoning frameworks into one searchable place. <em>It is not a diagnostic tool and does not replace clinical training, judgement, or primary literature.</em>
+    </div>
+
+    <!-- PART 1 -->
+    <div class="part-header">
+      <div class="part-label">Part 1</div>
+      <div class="part-title">Purpose</div>
+    </div>
+
+    <p>Musculoskeletal special-test evidence — sensitivity, specificity, likelihood ratios, and the clinical prediction rules (CPRs) built from combining tests into diagnostic or prescriptive clusters — is scattered across decades of individual papers, textbooks, and review articles. In practice, this means a clinician either commits large amounts of this data to memory, or spends assessment time cross-referencing multiple sources.</p>
+    <p>PhysioKB collates this into one searchable reference: special tests with their patient positioning, procedure, positive finding, and diagnostic statistics; the clusters they combine into (e.g. the Laslett cluster for sacroiliac joint pain, the Flynn cluster for lumbar manipulation response); the conditions those clusters differentiate; and subjective screening questions — including red flags — organised by body region.</p>
+    <p>The aim is narrow and practical: support clinical reasoning during a musculoskeletal or pain assessment by making this evidence quick to look up, not to automate or replace that reasoning.</p>
+
+    <!-- PART 2 -->
+    <div class="part-header">
+      <div class="part-label">Part 2</div>
+      <div class="part-title">Sources</div>
+    </div>
+
+    <h3>Physiopedia</h3>
+    <p>A substantial portion of the differential-diagnosis and clinical-reasoning content in this tool was synthesised from articles on <a class="inline-link" href="https://www.physio-pedia.com" target="_blank" rel="noopener">Physiopedia</a>, the open physiotherapy knowledge base. Physiopedia content is licensed <a class="inline-link" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">Creative Commons Attribution-ShareAlike</a> (CC BY-SA) — reuse requires attribution and requires derivative works to carry the same license forward. The wording throughout this tool is AI-paraphrased and restructured rather than copied verbatim, but as a derivative of CC BY-SA source material, the content here is likewise offered under <a class="inline-link" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.</p>
+
+    <h3>AI-assisted authoring</h3>
+    <p>The differential-diagnosis tables, clinical-reasoning frameworks, and subjective checklist content were synthesised and structured with AI assistance (Heidi and Claude), drawing on the Physiopedia source material above and on published clinical literature. This synthesis was reviewed and curated, not published unreviewed.</p>
+
+    <h3>Published clinical literature</h3>
+    <p>The special test statistics (sensitivity, specificity, likelihood ratios) and cluster/CPR data are drawn from named, published studies and clinical prediction rules — cited inline throughout the tool wherever you see a "Ref:" line. Examples include Michener et al. (2009) for the subacromial impingement cluster, Flynn et al. for the lumbar manipulation CPR, Laslett et al. for the sacroiliac joint cluster, the Ottawa Ankle Rules (Stiell et al.), and the Canadian C-Spine Rule (Stiell et al.). These statistics and clinical facts are not Physiopedia's to license — they're independently published findings that Physiopedia (and this tool) both draw on.</p>
+
+    <!-- PART 3 -->
+    <div class="part-header">
+      <div class="part-label">Part 3</div>
+      <div class="part-title">How It's Organised</div>
+    </div>
+
+    <p><strong>Regions</strong> — the primary way to browse. Each body region lists its CPR clusters, the conditions they relate to, red flags, key differentiators between similar presentations, and a subjective screening checklist.</p>
+    <p><strong>Conditions</strong> — each condition page shows its CPR clusters (with constituent tests) and clinical features drawn from differential-diagnosis comparisons.</p>
+    <p><strong>Clusters</strong> — a cluster is a named combination of tests (e.g. "≥3 of 5 positive") with its own diagnostic statistics, distinct from any individual test's statistics. Clicking a test from within a cluster, or a cluster's condition link, moves between these levels.</p>
+    <p><strong>Tests</strong> — individually browsable or searchable, each with patient position, procedure, positive finding, statistics, clinical notes, and known pitfalls — plus which cluster(s) it belongs to.</p>
+    <p><strong>Concepts</strong> — cross-cutting frameworks that don't belong to a single region: mechanical vs. inflammatory pain patterns, nociceptive/neuropathic/nociplastic pain phenotypes, central sensitisation screening, and a complete special-tests reference.</p>
+    <p>Use the search bar for a fast lookup across all of the above, or press <strong>/</strong> to focus it from anywhere.</p>
+
+    <hr />
+
+    <p>PhysioKB is a personal reference tool, built to reduce the friction of looking up special-test evidence during assessment. It will keep growing as more regions and conditions are added — corrections and gaps are expected as an ongoing process, not a finished product.</p>
+
+    <p class="ai-note">This tool and text has been built with AI assistance.</p>
+
+  </div>
+
+</body>
+</html>
