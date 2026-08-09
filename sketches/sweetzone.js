@@ -27,6 +27,27 @@ let highBoundary = 70;  // "Sweet" -> "Too Much" boundary
 // needle value (0..100)
 let needleValue = 28;
 
+// ---------------- Needle history graph ----------------
+let showGraph = false;
+let graphHistory = [];              // {t, v} samples, newest last
+const GRAPH_H = 170;                // height of graph panel, appended below the meter
+const MAX_HISTORY_SEC = 60;         // recording buffer — always retained, regardless of current zoom
+const MIN_WINDOW_SEC = 3;           // zoom-in limit
+let GRAPH_WINDOW_SEC = 20;          // seconds of history currently *visible* — zoomable with the scroll wheel
+let graphToggleBtn;                 // p5 DOM button
+let paused = false;
+let pauseBtn;                       // p5 DOM button
+
+// Virtual recording clock: only advances while NOT paused. This is what
+// history timestamps are measured against, instead of real wall-clock time
+// (millis()), so a pause never scrolls or interpolates the trace — it just
+// stops the clock. On resume we add one fixed jump (PAUSE_BREAK_MS) so the
+// break is always the same visual width no matter how long the pause was,
+// and mark the next sample so rendering starts a new, unconnected segment.
+let recTime = 0;
+let justResumed = false;
+const PAUSE_BREAK_MS = 700;
+
 // dragging state
 let draggingNeedle = false;
 let draggingLow = false;
@@ -63,6 +84,32 @@ function setup() {
     else if (e.key === "Escape") { cancelEditingUnc(); }
   });
   inputUnc.elt.addEventListener("blur", () => { finishEditingUnc(); });
+
+  graphToggleBtn = createButton('Show graph');
+  styleToolbarButton(graphToggleBtn);
+  graphToggleBtn.mousePressed(toggleGraph);
+
+  pauseBtn = createButton('Pause');
+  styleToolbarButton(pauseBtn);
+  pauseBtn.mousePressed(togglePause);
+  pauseBtn.hide(); // only relevant once the graph is shown
+
+  positionToolbar();
+}
+
+function styleToolbarButton(btn) {
+  btn.elt.style.position = 'fixed';
+  btn.elt.style.zIndex = '10';
+  btn.elt.style.background = 'rgba(0,0,0,0.55)';
+  btn.elt.style.color = '#ddd';
+  btn.elt.style.border = '1px solid rgba(255,255,255,0.28)';
+  btn.elt.style.borderRadius = '100px';
+  btn.elt.style.padding = '6px 14px';
+  btn.elt.style.fontFamily = 'monospace';
+  btn.elt.style.fontSize = '11px';
+  btn.elt.style.letterSpacing = '0.05em';
+  btn.elt.style.textTransform = 'uppercase';
+  btn.elt.style.cursor = 'pointer';
 }
 
 function drawArcWord(str, centerAng, radius, txtSize, col) {
@@ -111,11 +158,15 @@ function draw() {
 
   drawLabels();
   drawHandles();
+
+  recordHistory();
+  if (showGraph) drawGraphPanel();
 }
 
 function drawFrame() {
   push();
-  translate(width/2, height/2);
+  translate(canvasW/2, canvasH/2); // fixed to the meter's own dimensions — not the p5 global
+                                    // width/height, which change when the graph panel resizes the canvas
   noStroke();
   fill(FRAME_COLOR);
   rectMode(CENTER);
@@ -267,6 +318,173 @@ function drawHandles() {
   ellipse(hx, hy, 12);
 }
 
+function recordHistory() {
+  if (paused) return;
+  recTime += deltaTime; // virtual clock — frozen while paused, see declaration above
+
+  // record the needle value AND the current sweet-zone boundaries together,
+  // so the graph can show how the zone itself moved over time, not just its
+  // present-moment position re-applied retroactively across all of history.
+  graphHistory.push({t: recTime, v: needleValue, lo: lowBoundary, hi: highBoundary, brk: justResumed});
+  justResumed = false;
+
+  // prune to the recording buffer, NOT the current view window — this way
+  // zooming out reveals already-recorded history immediately, rather than
+  // needing to wait for it to accumulate again at the new zoom level.
+  while (graphHistory.length && recTime - graphHistory[0].t > MAX_HISTORY_SEC * 1000) {
+    graphHistory.shift();
+  }
+}
+
+function getSegments() {
+  // splits graphHistory into runs that should be drawn as separate,
+  // unconnected shapes — a new segment starts at each post-pause sample
+  let segments = [];
+  let current = [];
+  for (let p of graphHistory) {
+    if (p.brk && current.length) { segments.push(current); current = []; }
+    current.push(p);
+  }
+  if (current.length) segments.push(current);
+  return segments;
+}
+
+function drawGraphPanel() {
+  push();
+  translate(0, canvasH);
+
+  noStroke();
+  fill(12);
+  rect(0, 0, canvasW, GRAPH_H);
+
+  const padL = 46, padR = 20, padT = 14, padB = 22;
+  const plotW = canvasW - padL - padR;
+  const plotH = GRAPH_H - padT - padB;
+  const valToY = v => padT + map(v, 0, 100, plotH, 0);
+
+  // recTime is frozen while paused (it only advances inside recordHistory,
+  // which returns early when paused) — so "now" naturally stops scrolling
+  // during a pause without any extra bookkeeping here.
+  let now = recTime;
+  let tMin = now - GRAPH_WINDOW_SEC * 1000;
+  const xAt = p => map(p.t, tMin, now, 0, plotW);
+  const segments = getSegments();
+
+  push();
+  translate(padL, 0);
+
+  // time-varying zone bands: each boundary is traced from its own recorded
+  // history, so a dragged boundary shows up as a moving edge rather than
+  // the whole band jumping to match the current position. Drawn per
+  // segment so a pause break is a genuine gap, not an interpolated line.
+  for (let seg of segments) {
+    noStroke();
+    fill(Z_TOO_MUCH);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(100));
+    for (let i = seg.length - 1; i >= 0; i--) vertex(xAt(seg[i]), valToY(seg[i].hi));
+    endShape(CLOSE);
+
+    fill(Z_SWEET);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(p.hi));
+    for (let i = seg.length - 1; i >= 0; i--) vertex(xAt(seg[i]), valToY(seg[i].lo));
+    endShape(CLOSE);
+
+    fill(Z_TOO_LITTLE);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(p.lo));
+    for (let i = seg.length - 1; i >= 0; i--) vertex(xAt(seg[i]), valToY(0));
+    endShape(CLOSE);
+  }
+
+  // gridlines + labels at 0/25/50/75/100
+  stroke(255, 40);
+  strokeWeight(1);
+  fill(190);
+  textSize(10);
+  textAlign(RIGHT, CENTER);
+  for (let v = 0; v <= 100; v += 25) {
+    let y = valToY(v);
+    line(0, y, plotW, y);
+    noStroke();
+    text(v, -6, y);
+    stroke(255, 40);
+  }
+
+  for (let seg of segments) {
+    // boundary traces (thin lines along the edges of the sweet zone),
+    // colour-matched to the drag handles on the dial itself
+    noFill();
+    strokeWeight(1.5);
+    stroke(230, 200, 80);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(p.lo));
+    endShape();
+    stroke(200, 80, 80);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(p.hi));
+    endShape();
+
+    // needle-value trace
+    stroke(NEEDLE_COLOR);
+    strokeWeight(2);
+    beginShape();
+    for (let p of seg) vertex(xAt(p), valToY(p.v));
+    endShape();
+  }
+
+  // live value marker at the right edge (only while live, not while paused)
+  if (graphHistory.length && !paused) {
+    let last = graphHistory[graphHistory.length - 1];
+    noStroke();
+    fill(NEEDLE_COLOR);
+    ellipse(plotW, valToY(last.v), 7);
+  }
+
+  pop(); // padL translate
+
+  noStroke();
+  fill(180);
+  textSize(11);
+  textAlign(LEFT, CENTER);
+  text('Needle history · last ' + formatWindowLabel(GRAPH_WINDOW_SEC) + ' · scroll to zoom', padL, GRAPH_H - 8);
+
+  if (paused) {
+    fill(230, 200, 80);
+    textAlign(RIGHT, CENTER);
+    text('PAUSED', canvasW - padR, GRAPH_H - 8);
+  }
+
+  pop(); // canvasH translate
+}
+
+function toggleGraph() {
+  showGraph = !showGraph;
+  graphToggleBtn.html(showGraph ? 'Hide graph' : 'Show graph');
+  resizeCanvas(canvasW, showGraph ? canvasH + GRAPH_H : canvasH);
+  if (showGraph) pauseBtn.show(); else pauseBtn.hide();
+  positionToolbar();
+}
+
+function togglePause() {
+  paused = !paused;
+  if (!paused) {
+    // fixed-width break, regardless of how long the pause actually was
+    recTime += PAUSE_BREAK_MS;
+    justResumed = true;
+  }
+  pauseBtn.html(paused ? 'Resume' : 'Pause');
+}
+
+function positionToolbar() {
+  let rect = canvasElem.elt.getBoundingClientRect();
+  graphToggleBtn.position(rect.left + 14, rect.top + 14);
+  // sit to the right of the graph toggle button, same row
+  let toggleW = graphToggleBtn.elt.getBoundingClientRect().width;
+  pauseBtn.position(rect.left + 14 + toggleW + 8, rect.top + 14);
+}
+
 function getPointer(e) {
   if (touches.length > 0) { return {x: touches[0].x, y: touches[0].y}; }
   return {x: mouseX, y: mouseY};
@@ -401,6 +619,13 @@ function cancelEditingUnc() {
 }
 
 function keyPressed() {
+  if (editingUnc) return; // don't hijack keys while typing in the label field
+
+  if (key === ' ') {
+    if (showGraph) togglePause();
+    return false; // prevent the browser's default page-scroll-on-space
+  }
+
   const step = 2;
   const minWidth = 10;
   let center = (lowBoundary + highBoundary) / 2;
@@ -430,6 +655,19 @@ function keyPressed() {
 }
 
 function mouseWheel(event) {
+  if (showGraph && mouseY > canvasH) {
+    // scrolling over the graph panel zooms the time axis instead of the needle
+    let zoomFactor = event.delta > 0 ? 1.12 : 1 / 1.12;
+    GRAPH_WINDOW_SEC = constrain(GRAPH_WINDOW_SEC * zoomFactor, MIN_WINDOW_SEC, MAX_HISTORY_SEC);
+    return false;
+  }
   needleValue = constrain(needleValue - event.delta / 50, 0, 100);
   return false;
+}
+
+function formatWindowLabel(sec) {
+  if (sec < 60) return Math.round(sec) + 's';
+  let m = Math.floor(sec / 60);
+  let s = Math.round(sec % 60);
+  return s ? (m + 'm ' + s + 's') : (m + 'm');
 }
