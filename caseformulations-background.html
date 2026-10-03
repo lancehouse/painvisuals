@@ -58,7 +58,7 @@
 
     <div class="page-eyebrow">Technical &amp; clinical background</div>
     <h1>Pain Network Builder</h1>
-    <p class="subtitle">A clinical case formulation tool built on interactive network graphs, with an integrated belief propagation engine drawing loosely from Bayesian network theory.</p>
+    <p class="subtitle">A clinical case formulation tool built on interactive network graphs, with an integrated belief propagation engine drawing on fuzzy cognitive mapping.</p>
 
     <div class="disclaimer">
       This tool is designed to support shared decision-making conversations between clinicians and patients — making implicit clinical reasoning about pain interactions visible, explorable, and testable in real time. <em>This tool and text has been built with AI assistance.</em>
@@ -108,41 +108,35 @@
     <!-- PART 3 -->
     <div class="part-header">
       <div class="part-label">Part 3</div>
-      <div class="part-title">The Bayesian Analysis Component</div>
+      <div class="part-title">The Network Dynamics Component (Fuzzy Cognitive Mapping)</div>
     </div>
 
-    <h3>What is a Bayesian Network?</h3>
-    <p>A Bayesian network is a mathematical framework for representing <strong>probabilistic relationships</strong> between variables. Each node holds a probability — the likelihood that this variable is in an active or elevated state — and these probabilities update based on observed evidence flowing through the network according to Bayes' theorem.</p>
-    <p>In a fully specified Bayesian network, each node would require a <strong>conditional probability table (CPT)</strong> — a complete specification of the probability of that node being active given every possible combination of its parent nodes' states. For even a moderately complex pain network this would require hundreds of values, which is neither practical nor clinically meaningful given the current state of evidence. The approach taken here is deliberately simplified.</p>
+    <h3>What is a Fuzzy Cognitive Map?</h3>
+    <p>A Fuzzy Cognitive Map (FCM) is a modelling approach — first described by Kosko in 1986 — for representing a system of factors that influence one another through <strong>signed, weighted connections</strong>, where those connections are allowed to form loops. Each node holds a value between 0 and 1 representing how activated that factor currently is, and each connection is either <strong>facilitating</strong> (pushes the target the same way as the source) or <strong>inhibiting</strong> (pushes the target the opposite way). FCMs have an established track record in nursing and chronic-illness research for building exactly this kind of collaborative causal diagram with a patient or clinician.</p>
+    <p>This is a deliberately different choice from a classical Bayesian network. Bayesian networks require the graph to have no loops, because their maths (conditional probability tables, evidence propagation) assumes influence flows one way. Feedback loops — pain disrupting sleep, poor sleep amplifying pain — are the entire point of this tool, so a formalism built for cyclic causal diagrams is a more honest fit than one that formally forbids them.</p>
 
-    <h3>The Noisy-OR Model</h3>
-    <p>Rather than requiring full CPTs, the tool uses a <strong>noisy-OR approximation</strong> — a well-established simplification used in medical diagnostic Bayesian networks (including early versions of systems like QMR-DT).</p>
-    <p>The noisy-OR model rests on a key assumption: each parent node can independently cause the child node to become active. The probability that a child node is not activated is the product of the probabilities that each of its parents individually failed to activate it:</p>
-    <blockquote>
-      P(child not activated) = ∏ (1 − parent_belief × edge_weight)<br />
-      P(child activated) = 1 − P(child not activated)
-    </blockquote>
-    <p>This means that <strong>multiple facilitatory inputs compound correctly</strong> — two strong facilitatory parents push the child much further than one alone. Conversely, a strong inhibitory input suppresses the child's activation by reducing the effective belief of the incoming signal.</p>
+    <h3>How a Signal Propagates</h3>
+    <p>Every node has a <strong>prior</strong> — its resting value before any signal has been entered — and a current <strong>belief</strong>. Only the <em>deviation</em> of a node from its own prior is treated as a signal; a node sitting exactly at its resting value sends nothing downstream, which is what keeps an untouched network stationary until a clinician actually engages with it.</p>
+    <p>Each pass, every node combines the deviations arriving from its connected neighbours — added for facilitating connections, subtracted for inhibiting ones — and moves a fraction of the way toward the resulting target, rather than jumping straight to it. Multiple passes let a signal travel through chains of connections (A→B→C→D) and let feedback loops settle. This is also what makes inhibition behave the way the word implies: an inhibiting connection can now genuinely pull a downstream factor <em>below</em> its resting value, not only add a second route to increase it.</p>
+    <p>The model runs up to <strong>20 passes</strong> after each input, but stops as soon as the network stabilises — typically well before 20. If a loop is still changing meaningfully at the final pass, that is recorded as not-yet-settled rather than silently presented as a stable answer.</p>
 
     <h3>Priors</h3>
-    <p>Every node starts with a <strong>prior probability</strong> — its baseline likelihood of being active before any specific evidence is introduced. In this tool, the prior is derived from node size, encoding the clinical judgement that a larger node represents a more prevalent or significant factor for this patient. The prior acts as a floor: even with no active inputs, the node sits at its prior level.</p>
+    <p>Every node starts with a <strong>prior</strong> — its baseline value before any specific evidence is introduced. In this tool, the prior is derived from node size, encoding the clinical judgement that a larger node represents a more prevalent or significant factor for this patient. The prior is each node's resting point: with no active signal reaching it, that is where it sits — and it is also the point the node's colour is measured relative to, so a large, high-baseline node can still visibly shift toward relief when suppressed.</p>
 
-    <h3>Evidence and Observation</h3>
-    <p>When a clinician or patient introduces a signal to a node using the keyboard inputs, that node becomes <strong>observed</strong> — pinned at its assigned belief level. This is analogous to <strong>conditioning on evidence</strong> in a Bayesian network: the observed node represents a known fact and the rest of the network updates in response. Observed nodes send signals downstream but do not receive updates from propagation.</p>
-
-    <h3>Propagation</h3>
-    <p>The model runs <strong>20 iterative passes</strong> through the network after each input. This allows belief to travel through chains of connections and allows bidirectional relationships to reach a stable equilibrium. A <strong>loop damping</strong> factor (0.85) is applied to all edge weights to prevent feedback loops from inflating beliefs without bound.</p>
+    <h3>Entering a Signal</h3>
+    <p>When a clinician or patient introduces a signal to a node using the keyboard inputs, that node is held at its new value for just the one round of propagation that keypress triggers — a standard technique in FCM analysis, sometimes called a "what-if" run: fix the stimulus concept, and watch how the rest of the network responds to it. Once that round finishes, the node rejoins the network fully and is free to be pulled around by feedback from everything downstream of it, exactly like every other node.</p>
+    <p>This is a deliberate choice: nothing in the network is ever permanently fixed. A single entered signal can genuinely ripple from one factor to a second, to a third, and — if the network you've built has a feedback loop — back around to affect the very factor you started with. That looping-back is not a glitch; it is the clinically interesting part, and is exactly the kind of dynamic this tool exists to make visible.</p>
 
     <h3>What the Numbers Mean — and What They Don't</h3>
-    <p>The belief values displayed represent <strong>relative influence scores</strong>, not calibrated clinical probabilities. A Pain node at 78% does not mean there is a 78% probability of the patient being in pain — it means the network model, given the inputs provided, suggests Pain is substantially elevated relative to its prior.</p>
+    <p>The belief values displayed represent <strong>relative influence scores</strong>, not calibrated clinical probabilities. A Pain node at 78% does not mean there is a 78% probability of the patient being in pain — it means the network model, given the inputs provided, suggests Pain is substantially elevated relative to its own resting baseline.</p>
     <p>What is clinically meaningful is:</p>
     <ul>
       <li><strong>The direction of change</strong> — did a factor go up or down in response to an intervention?</li>
       <li><strong>The relative magnitude</strong> — which factors responded most strongly?</li>
       <li><strong>The pattern of ripple effects</strong> — which unexpected nodes were affected?</li>
-      <li><strong>The presence of oscillation</strong> — does the system hunt around an equilibrium, suggesting competing feedback loops?</li>
+      <li><strong>Whether the network settles</strong> — does it reach a stable state, or keep shifting, suggesting finely balanced competing feedback loops?</li>
     </ul>
-    <p>When a clinician introduces a facilitatory signal and observes Pain initially drop, then partly recover, then settle at a new lower level — this oscillation reflects a genuine property of tightly coupled feedback systems: <strong>interventions in one part of a network have non-linear, time-dependent effects on the whole</strong>. This is one of the most important clinical messages the tool conveys.</p>
+    <p>When a clinician introduces a facilitatory signal to one factor and, several passes later, sees a connected Pain node settle at a new, lower level via an inhibiting loop elsewhere in the network — that outcome reflects a genuine property of feedback systems: <strong>interventions in one part of a network can have effects elsewhere that are not simply proportional to the size of the input</strong>. This is one of the most important clinical messages the tool conveys.</p>
 
     <!-- PART 4 -->
     <div class="part-header">
@@ -155,9 +149,9 @@
     </div>
 
     <p><strong>This is not a diagnostic tool.</strong> The network and its analysis cannot determine what is causing a patient's pain, predict outcomes, or guide treatment decisions in any formal sense.</p>
-    <p><strong>This is not a validated Bayesian network.</strong> A true Bayesian network requires empirically derived conditional probabilities, expert elicitation, and validation against clinical data. The parameters here — edge weights, priors, damping factors — reflect clinical judgement and subjective experience, not measured probabilities.</p>
+    <p><strong>This is not a validated model.</strong> A validated FCM requires expert elicitation across a panel, sensitivity testing, and comparison against clinical outcomes data. The parameters here — edge weights, priors, damping — reflect one clinician's or patient's judgement and subjective experience for this individual case, not measured or population-level values.</p>
     <p><strong>This is not a simulation of neurobiological processes.</strong> The propagation model does not represent actual neural signalling, nociceptive processing, or psychological mechanisms. It is a metaphor — a way of making the concept of interconnection and mutual influence visible and explorable.</p>
-    <p><strong>The analysis is forwards-only.</strong> The model propagates evidence from observed nodes downstream. It does not perform backwards inference — it cannot reason from an observed effect (high Pain) back to the most likely causes. Full backwards inference would require a complete Bayesian inference engine, which is beyond the scope of this tool.</p>
+    <p><strong>The analysis is forwards-only.</strong> The model propagates a signal outward from wherever it was entered. It does not perform backwards inference — it cannot reason from an observed effect (high Pain) back to the most likely causes. Inferring likely upstream causes from an observed effect would require assumptions (an acyclic graph) that conflict with the feedback loops this tool exists to represent, so it is intentionally out of scope.</p>
 
     <!-- PART 5 -->
     <div class="part-header">
@@ -172,7 +166,7 @@
 
     <hr />
 
-    <p>The Pain Network Builder combines interactive network visualisation with a simplified Bayesian-inspired propagation model to create a tool that is clinically useful without claiming mathematical precision. It makes visible the interconnected, non-linear nature of chronic pain — and in doing so, communicates one of the most important messages in contemporary pain science: that pain is a system, not a symptom, and that understanding it requires thinking about the whole person.</p>
+    <p>The Pain Network Builder combines interactive network visualisation with a fuzzy-cognitive-mapping propagation model to create a tool that is clinically useful without claiming mathematical precision. It makes visible the interconnected, non-linear nature of chronic pain — and in doing so, communicates one of the most important messages in contemporary pain science: that pain is a system, not a symptom, and that understanding it requires thinking about the whole person.</p>
 
     <p class="ai-note">This tool and text has been built with AI assistance.</p>
 

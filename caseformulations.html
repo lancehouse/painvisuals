@@ -12,8 +12,9 @@
     #back {
       position: fixed;
       top: 14px;
-      /* Pushed right to avoid clash with the sketch's own Networks button at left:14px */
-      left: 220px;
+      /* Anchored to the right edge so it never overlaps the sketch's own
+         top-left buttons (Networks, Analyse), regardless of window width. */
+      right: 20px;
       z-index: 2000;
       font-family: 'DM Mono', monospace, monospace;
       font-size: 11px;

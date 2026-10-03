@@ -92,17 +92,39 @@ let inputFlash = null;
 
 // Belief animation: displayBelief lerps toward belief each frame
 const BELIEF_LERP  = 0.11;   // fraction per frame (0.11 ≈ reaches target in ~30 frames)
-const PARTICLE_SPD = 0.032;  // particle travel speed along edge (0→1 per frame, ~30 frames)
+
+// Particle travel speed is a constant PIXELS-per-frame rate, not a fixed
+// fraction-of-edge-length-per-frame — otherwise a longer edge's dot visibly
+// outruns a shorter edge's dot even though both take the same frame count.
+// (80% of the original ~6px/frame speed, per request.)
+const PARTICLE_PX_PER_FRAME = 4.8;
 let particles = [];           // active particles: { edgeId, forward, t, col, width }
 
-// Nodes whose belief was directly set by the user — these are "pinned" and
-// never updated by propagation, only by further keyboard input.
-let observedNodes = new Set(); // Set<nodeId>
+// Cascade scheduling — lets a single keypress animate the FULL sequential
+// flow of a signal through the network (hop 1, then hop 2, then hop 3...)
+// instead of only showing the first hop out of the node you pressed.
+// { frame: frameCount at which to fire, nodeId: node to spawn outward from }
+let pendingSpawns    = [];
+const WAVE_GAP_FRAMES = 25; // frames between a node lighting up and its neighbours following
+                             // (scaled alongside PARTICLE_PX_PER_FRAME, to keep the
+                             // relay timing matched to how long a hop actually takes)
 
 // Propagation algorithm tuning constants (see propagateBelief for full explanation)
-const PROP_ITERATIONS = 20;   // how many passes to run per keypress (more = signal travels further)
-const LOOP_DAMPING    = 0.85; // applied once to all edge weights to prevent feedback loop inflation
-                               // e.g. thickness=5, maxT=5 → raw w=1.0 → damped w=0.85
+const PROP_ITERATIONS  = 20;    // max passes to run per keypress; stops early once stable (see CONVERGE_EPS)
+const LOOP_DAMPING     = 0.85;  // applied once to all edge weights to prevent feedback loop inflation
+                                 // e.g. thickness=5, maxT=5 → raw w=1.0 → damped w=0.85
+const RELAX_ALPHA      = 0.35;  // fraction of the way each node moves toward its target belief per pass
+                                 // (< 1 so oscillating/cyclic subnetworks damp toward equilibrium instead of overshooting)
+const CONVERGE_EPS     = 0.002; // if every node's per-pass change drops below this, propagation has settled
+
+// Set by propagateBelief() after each run — read by the debug overlay and (later) the UI.
+let lastPropIterations = 0;     // how many passes actually ran before stopping
+let lastPropConverged  = true;  // false if PROP_ITERATIONS was exhausted without settling (oscillation/slow drift)
+
+// How many hops (nodes away) a single keypress is allowed to reach — both in
+// the actual belief update and in the particle animation. Infinity = no cap.
+// Adjustable from the Analyse panel's "Propagation depth" slider.
+let maxPropagationHops = Infinity;
 
 const LINK_COLORS = {
   facilitate: { r: 240, g: 60,  b: 60  },
@@ -132,13 +154,13 @@ const DIR_CYCLE  = { to: "from", from: "both", both: "to" };
 const PRESETS = [
   {
     name: "Basic Pain",
-    shape: "rect",
+    shape: "circle",
     nodes: [
-      { id:0, label:"Sleep",              x:0.371, y:0.131, group:"origin", rw:80,  rh:50, fontSize:28, paletteName:"Blue" },
-      { id:1, label:"Pain",               x:0.482, y:0.469, group:"pain",   rw:80,  rh:51, fontSize:34 },
-      { id:2, label:"Activity",           x:0.602, y:0.136, group:"affect", rw:93,  rh:50, fontSize:29, paletteName:"Blue" },
-      { id:3, label:"Moods and Thoughts", x:0.606, y:0.842, group:"affect", rw:210, rh:50, fontSize:25 },
-      { id:4, label:"Relationships",      x:0.367, y:0.825, group:"affect", rw:146, rh:50, fontSize:28 },
+      { id:0, label:"Sleep",              x:0.371, y:0.131, group:"origin", r:36, rw:80,  rh:50, fontSize:22, paletteName:"Blue" },
+      { id:1, label:"Pain",               x:0.482, y:0.469, group:"pain",   r:36, rw:80,  rh:51, fontSize:24 },
+      { id:2, label:"Activity",           x:0.602, y:0.136, group:"affect", r:42, rw:93,  rh:50, fontSize:22, paletteName:"Blue" },
+      { id:3, label:"Moods and Thoughts", x:0.606, y:0.842, group:"affect", r:95, rw:210, rh:50, fontSize:22 },
+      { id:4, label:"Relationships",      x:0.367, y:0.825, group:"affect", r:66, rw:146, rh:50, fontSize:22 },
     ],
     edges: [
       { id:0, from:0, to:1, thickness:5, linkState:"facilitate", direction:"both", curve:0.000 },
@@ -342,6 +364,7 @@ function setup() {
   });
   document.addEventListener("wheel", handleWheel, { passive: false });
   setPhase(0);
+  initAutosave();
 }
 
 // ─── MENU UI ─────────────────────────────────────────────────────────────────
@@ -410,15 +433,229 @@ function storageDelete(key) {
   localStorage.removeItem(key);
 }
 
+// ─── AUTOSAVE / UNSAVED-WORK PROTECTION ──────────────────────────────────────
+// The current network is autosaved continuously so a mis-click (e.g. the mouse
+// "back" button) can never lose a formulation that hasn't been saved by name.
+//
+//   AUTOSAVE_KEY  — the latest state of the current work, rewritten whenever it
+//                   changes (checked about once a second, plus on page hide/unload).
+//   PREV_KEY      — one older generation: the previous visit's autosave (moved
+//                   here on this visit's first write) or work the user confirmed
+//                   discarding when loading something else.
+//
+// Neither key starts with "painnet:", so autosaves never show up in (or get
+// deleted from) the "My saved networks" list. Empty networks are never written,
+// so opening the page fresh can't wipe the previous autosave.
+//
+// "Dirty" means the network differs from the last named save / deliberate load.
+// While dirty, leaving the page triggers the browser's "Leave site?" prompt.
+
+const AUTOSAVE_KEY         = "painnet-autosave";
+const PREV_KEY             = "painnet-autosave-prev";
+const AUTOSAVE_EVERY_FRAMES = 60;
+
+let savedBaselineJSON  = null;   // network JSON as of last named save / load
+let lastAutosaveJSON   = null;   // network JSON last written to AUTOSAVE_KEY
+let lastAutosaveAt     = null;   // Date of last autosave write this visit
+let startupAutosave    = null;   // { savedAt, data } found in storage on page load
+let startupAutosaveRaw = null;
+let movedStartupToPrev = false;
+let recoverBanner      = null;
+
+function networkJSON() {
+  return JSON.stringify(serialiseNetwork(""));
+}
+
+function isDirty() {
+  return nodes.length > 0 && networkJSON() !== savedBaselineJSON;
+}
+
+function markSaved() {
+  savedBaselineJSON = networkJSON();
+}
+
+function readAutosave(key) {
+  try {
+    let raw = localStorage.getItem(key);
+    if (!raw) return null;
+    let rec = JSON.parse(raw);
+    if (!rec || !rec.data || !rec.data.nodes || rec.data.nodes.length === 0) return null;
+    return rec;
+  } catch (err) { return null; }
+}
+
+function writeAutosave(key, json) {
+  try {
+    localStorage.setItem(key, '{"savedAt":' + Date.now() + ',"data":' + json + '}');
+    return true;
+  } catch (err) {
+    console.warn("Autosave failed:", err);
+    return false;
+  }
+}
+
+function autosaveNow() {
+  if (nodes.length === 0) return;
+  let json = networkJSON();
+  if (json === lastAutosaveJSON) return;
+  // An untouched preset or named save needs no autosave — and writing one
+  // would push genuinely unsaved work out of the recovery slots.
+  if (json === savedBaselineJSON) return;
+  // First write this visit: keep the previous visit's autosave as PREV_KEY
+  if (!movedStartupToPrev && startupAutosaveRaw) {
+    try { localStorage.setItem(PREV_KEY, startupAutosaveRaw); } catch (err) {}
+  }
+  movedStartupToPrev = true;
+  if (writeAutosave(AUTOSAVE_KEY, json)) {
+    lastAutosaveJSON = json;
+    lastAutosaveAt   = new Date();
+  }
+}
+
+function autosaveTick() {
+  if (frameCount % AUTOSAVE_EVERY_FRAMES === 0) autosaveNow();
+}
+
+// Before replacing dirty work with something else, ask — and if confirmed,
+// stash the work in PREV_KEY so it is still recoverable from the menu.
+function confirmDiscardChanges() {
+  if (!isDirty()) return true;
+  if (!confirm("This network has unsaved changes.\n\nReplace it anyway? " +
+               "(It will be kept as an earlier autosave you can restore from the Networks menu.)")) {
+    return false;
+  }
+  writeAutosave(PREV_KEY, networkJSON());
+  return true;
+}
+
+function restoreAutosave(rec) {
+  if (!confirmDiscardChanges()) return;
+  loadNetwork(rec.data);
+  // Deliberately leave the baseline alone: restored work is still unsaved,
+  // so the leave-page prompt keeps protecting it until it is saved by name.
+  hideRecoverBanner();
+}
+
+function describeAutosave(rec) {
+  let d = new Date(rec.savedAt);
+  let when = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }) +
+             " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return when + " · " + rec.data.nodes.length + " nodes";
+}
+
+function initAutosave() {
+  markSaved();   // empty network on load = nothing unsaved
+  try { startupAutosaveRaw = localStorage.getItem(AUTOSAVE_KEY); } catch (err) {}
+  startupAutosave = readAutosave(AUTOSAVE_KEY);
+  if (!startupAutosave) startupAutosaveRaw = null;
+  if (startupAutosave) showRecoverBanner(startupAutosave);
+
+  window.addEventListener("beforeunload", function(e) {
+    autosaveNow();
+    if (isDirty()) {
+      e.preventDefault();
+      e.returnValue = "";   // browsers show their own generic "Leave site?" text
+    }
+  });
+  window.addEventListener("pagehide", autosaveNow);
+  document.addEventListener("visibilitychange", function() {
+    if (document.visibilityState === "hidden") autosaveNow();
+  });
+
+  // Swallow the mouse's back/forward side buttons (3 and 4) on this page.
+  // Capture phase on window, because menu elements stopPropagation on mousedown.
+  // Not every browser honours this — beforeunload + autosave are the backstop.
+  ["mousedown", "mouseup", "auxclick", "pointerdown", "pointerup"].forEach(function(type) {
+    window.addEventListener(type, function(e) {
+      if (e.button === 3 || e.button === 4) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (type === "mouseup") flashNotice("Mouse back/forward is disabled here — use ← Back (top right)");
+      }
+    }, true);
+  });
+}
+
+function showRecoverBanner(rec) {
+  recoverBanner = createDiv("");
+  let s = recoverBanner.elt.style;
+  s.position = "fixed"; s.top = "14px"; s.left = "50%"; s.transform = "translateX(-50%)";
+  s.zIndex = "2100"; s.background = "#fffbe8"; s.border = "1.5px solid #e0c060";
+  s.borderRadius = "10px"; s.padding = "8px 12px 8px 16px";
+  s.boxShadow = "0 4px 16px rgba(0,0,0,0.15)"; s.fontFamily = "Georgia, serif";
+  s.fontSize = "14px"; s.color = "#443"; s.display = "flex"; s.gap = "10px";
+  s.alignItems = "center";
+  recoverBanner.elt.addEventListener("mousedown", (e) => e.stopPropagation());
+
+  let msg = document.createElement("span");
+  msg.textContent = "Unsaved work from your last visit (" + describeAutosave(rec) + ")";
+  recoverBanner.elt.appendChild(msg);
+
+  function bannerBtn(label, primary, onClick) {
+    let b = document.createElement("button");
+    b.textContent = label;
+    b.style.cssText = "font-family:Georgia,serif;font-size:13px;padding:4px 12px;" +
+      "border-radius:6px;cursor:pointer;" +
+      (primary ? "background:#5566bb;color:white;border:none;"
+               : "background:white;color:#555;border:1px solid #ccb;");
+    b.addEventListener("click", onClick);
+    recoverBanner.elt.appendChild(b);
+  }
+  bannerBtn("Restore", true, function() { restoreAutosave(rec); });
+  bannerBtn("Not now", false, hideRecoverBanner);
+}
+
+function hideRecoverBanner() {
+  if (recoverBanner) { recoverBanner.remove(); recoverBanner = null; }
+}
+
+let noticeTimer = null;
+function flashNotice(text) {
+  let el = document.getElementById("cf-notice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "cf-notice";
+    el.style.cssText = "position:fixed;left:50%;bottom:150px;transform:translateX(-50%);" +
+      "z-index:2200;background:rgba(40,40,70,0.88);color:white;font-family:Georgia,serif;" +
+      "font-size:14px;padding:8px 16px;border-radius:8px;pointer-events:none;";
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.style.display = "block";
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(function() { el.style.display = "none"; }, 2500);
+}
+
 // ─── MENU PANEL ───────────────────────────────────────────────────────────────
 
 function rebuildMenuPanel() {
   menuPanel.elt.innerHTML = "";
 
+  // Recover unsaved work (autosaves) — only shown when there is something
+  let prevAutosave = readAutosave(PREV_KEY);
+  if (prevAutosave && startupAutosave && prevAutosave.savedAt === startupAutosave.savedAt) {
+    prevAutosave = null;   // same snapshot, don't list it twice
+  }
+  if (startupAutosave || prevAutosave) {
+    addMenuSection("Recover unsaved work");
+    if (startupAutosave) {
+      addMenuRow("↺ Last visit — " + describeAutosave(startupAutosave), "action",
+        function() { restoreAutosave(startupAutosave); closeMenu(); });
+    }
+    if (prevAutosave) {
+      addMenuRow("↺ Earlier — " + describeAutosave(prevAutosave), "action",
+        function() { restoreAutosave(prevAutosave); closeMenu(); });
+    }
+    addMenuDivider();
+  }
+
   // Built-in presets
   addMenuSection("Built-in presets");
   for (let p of PRESETS) {
-    addMenuRow(p.name, "preset", function() { loadNetwork(p); closeMenu(); });
+    addMenuRow(p.name, "preset", function() {
+      if (!confirmDiscardChanges()) return;
+      loadNetwork(p); markSaved(); closeMenu();
+    });
   }
   addMenuDivider();
 
@@ -447,7 +684,7 @@ function rebuildMenuPanel() {
       lbl.parent(row);
       lbl.elt.addEventListener("click", function() {
         let data = storageLoad(key);
-        if (data) { loadNetwork(data); closeMenu(); }
+        if (data && confirmDiscardChanges()) { loadNetwork(data); markSaved(); closeMenu(); }
       });
 
       let del = createDiv("✕");
@@ -459,6 +696,7 @@ function rebuildMenuPanel() {
       del.elt.addEventListener("mouseenter", function() { del.style("color","#c00"); });
       del.elt.addEventListener("mouseleave", function() { del.style("color","#c88"); });
       del.elt.addEventListener("click", function() {
+        if (!confirm("Delete saved network \"" + name + "\"? This cannot be undone.")) return;
         storageDelete(key);
         rebuildMenuPanel();
       });
@@ -529,13 +767,35 @@ function rebuildMenuPanel() {
     let name = nameIn.elt.value.trim();
     if (!name) { alert("Please enter a name."); return; }
     if (nodes.length === 0) { alert("Nothing to save yet!"); return; }
+    if (localStorage.getItem("painnet:" + name) !== null &&
+        !confirm("A network called \"" + name + "\" already exists. Overwrite it?")) return;
     storageSave(name, serialiseNetwork(name));
+    markSaved();
     nameIn.elt.value = "";
     rebuildMenuPanel();
   }
   saveBtn.mousePressed(doSave);
 
+  let status = createDiv(nodes.length === 0 ? "" :
+    (isDirty() ? "Not saved by name yet" : "Saved") +
+    (lastAutosaveAt ? " · autosaved " + lastAutosaveAt.toLocaleTimeString(undefined,
+      { hour: "2-digit", minute: "2-digit" }) : ""));
+  status.style("font-size","11px"); status.style("color","#99a");
+  status.style("font-style","italic"); status.style("padding","0 20px 4px");
+  status.parent(menuPanel);
+
   // Export current node positions for preset editing
+  addMenuDivider();
+  addMenuSection("File — move a case between computers");
+  addMenuRow("⬇ Download to file…", "action", function() {
+    closeMenu();
+    downloadNetworkFile();
+  });
+  addMenuRow("⬆ Open from file…", "action", function() {
+    closeMenu();
+    openNetworkFile();
+  });
+
   addMenuDivider();
   addMenuSection("Export");
   addMenuRow("📋 Copy full preset", "action", function() {
@@ -606,12 +866,86 @@ function rebuildMenuPanel() {
   // New blank network
   addMenuDivider();
   addMenuRow("+ New blank network", "action", function() {
+    if (!confirmDiscardChanges()) return;
     nodes = []; edges = [];
     originNode = null; painNode = null;
-    observedNodes.clear();
+    particles = []; pendingSpawns = [];
     closePopup(); closeMenu();
     setPhase(0);
   });
+}
+
+// ─── FILE DOWNLOAD / OPEN ─────────────────────────────────────────────────────
+// Offline copies of a network as a .json file, so a case can be kept outside the
+// browser or moved to another computer. The file holds serialiseNetwork()'s
+// output plus a small header; a bare serialiseNetwork() object (e.g. copied out
+// of localStorage) also opens fine.
+
+const FILE_FORMAT = "painvisuals-case-formulation";
+
+function downloadNetworkFile() {
+  if (nodes.length === 0) { alert("Nothing to download yet!"); return; }
+  let today = new Date().toISOString().slice(0, 10);
+  let name = prompt("Name for this case formulation:", "Case formulation " + today);
+  if (name === null) return;
+  name = name.trim() || "Case formulation " + today;
+
+  let data = serialiseNetwork(name);
+  data.format  = FILE_FORMAT;
+  data.version = 1;
+  data.savedAt = new Date().toISOString();
+
+  let blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  let a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name.replace(/[\\/:*?"<>|]+/g, "-") + ".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+  // A downloaded copy counts as saved for the leave-page prompt
+  markSaved();
+}
+
+function openNetworkFile() {
+  let input = document.createElement("input");
+  input.type   = "file";
+  input.accept = ".json,application/json";
+  input.addEventListener("change", function() {
+    let file = input.files && input.files[0];
+    if (!file) return;
+    let reader = new FileReader();
+    reader.onload = function() {
+      let data;
+      try { data = JSON.parse(reader.result); }
+      catch (err) { alert("That file isn't a readable case formulation (not valid JSON)."); return; }
+      if (!isValidNetworkData(data)) {
+        alert("That file doesn't look like a case formulation saved from this tool.");
+        return;
+      }
+      if (!confirmDiscardChanges()) return;
+      loadNetwork(data);
+      markSaved();
+      hideRecoverBanner();
+      flashNotice("Opened \"" + (data.name || file.name) + "\" — save it by name to keep it in this browser");
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+function isValidNetworkData(data) {
+  if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.edges)) return false;
+  if (data.nodes.length === 0) return false;
+  let ids = new Set();
+  for (let n of data.nodes) {
+    if (!n || n.id === undefined || typeof n.x !== "number" || typeof n.y !== "number") return false;
+    ids.add(n.id);
+  }
+  for (let e of data.edges) {
+    if (!e || !ids.has(e.from) || !ids.has(e.to)) return false;
+  }
+  return true;
 }
 
 // ─── MENU HELPERS ────────────────────────────────────────────────────────────
@@ -742,6 +1076,48 @@ function buildAnalyseUI() {
     if (!showDebug) debugLines = []; // clear overlay when turned off
   });
 
+  // Propagation depth — how many hops a single keypress is allowed to reach,
+  // in both the actual belief update and the particle animation.
+  const HOP_SLIDER_MAX = 8; // slider's top position means "All" (Infinity), not literally 8
+
+  let hopRow = createDiv("");
+  hopRow.style("margin-bottom","12px");
+  hopRow.parent(analysePanel);
+
+  let hopLabelRow = createDiv("");
+  hopLabelRow.style("display","flex"); hopLabelRow.style("justify-content","space-between");
+  hopLabelRow.style("margin-bottom","4px");
+  hopLabelRow.parent(hopRow);
+
+  let hopLabel = createDiv("Propagation depth:");
+  hopLabel.style("font-size","12px"); hopLabel.style("color","#444");
+  hopLabel.parent(hopLabelRow);
+
+  let hopValueLabel = createDiv(
+    maxPropagationHops >= HOP_SLIDER_MAX ? "All" : String(maxPropagationHops)
+  );
+  hopValueLabel.style("font-size","12px"); hopValueLabel.style("color","#2a7a6a");
+  hopValueLabel.style("font-weight","bold");
+  hopValueLabel.parent(hopLabelRow);
+
+  let hopSlider = createSlider(
+    1, HOP_SLIDER_MAX,
+    maxPropagationHops >= HOP_SLIDER_MAX ? HOP_SLIDER_MAX : maxPropagationHops,
+    1
+  );
+  hopSlider.style("width","100%");
+  hopSlider.parent(hopRow);
+  hopSlider.input(function() {
+    let v = Number(hopSlider.value());
+    maxPropagationHops = (v >= HOP_SLIDER_MAX) ? Infinity : v;
+    hopValueLabel.elt.textContent = (v >= HOP_SLIDER_MAX) ? "All" : String(v);
+  });
+
+  let hopNote = createDiv("How many nodes away a single + / − keypress is allowed to ripple, in the belief values and the flowing dots alike.");
+  hopNote.style("font-size","10px"); hopNote.style("color","#888");
+  hopNote.style("margin-top","3px"); hopNote.style("line-height","1.4");
+  hopNote.parent(hopRow);
+
   // Belief scale legend
   let legend = createDiv("");
   legend.style("margin-bottom","12px");
@@ -867,20 +1243,28 @@ function initBeliefs() {
     n.belief = n.prior;
     n.displayBelief = n.prior;
   }
-  observedNodes.clear();
   particles = [];
+  pendingSpawns = [];
 }
 
-// Map belief (0-1) to a colour: 0=cyan, 0.5=neutral grey, 1=red
-// Deviation from 0.5 is amplified with a power curve so small changes are visible.
-function beliefColor(b) {
+// Map belief (0-1) to a colour: neutral grey at the node's own PRIOR,
+// shading toward cyan below it and red above it.
+// Deviation from prior is amplified with a power curve so small changes are
+// visible, and normalised against the available range on that side (a node
+// with prior 0.8 only has 0.2 of "room" above it, but that 0.2 should still
+// be able to read as fully red — otherwise high-prior nodes can never
+// visibly show relief, which is the bug this pivot fixes).
+function beliefColor(b, prior) {
   b = constrain(b, 0, 1);
-  // Remap: amplify deviation from 0.5
-  // t is 0..1 deviation from centre, then power-curved
-  let dev = b - 0.5;                        // -0.5 to +0.5
-  let sign = dev >= 0 ? 1 : -1;
-  let amp  = pow(abs(dev) * 2, 0.45) * 0.5; // compress range: 0..0.5 curved
-  let bVis = 0.5 + sign * amp;              // remapped back to 0..1
+  prior = (prior === undefined || prior === null) ? 0.5 : constrain(prior, 0.001, 0.999);
+
+  let dev   = b - prior;                              // signed deviation from prior
+  let sign  = dev >= 0 ? 1 : -1;
+  let range = sign >= 0 ? (1 - prior) : prior;         // max possible deviation on this side
+  let norm  = range > 0 ? constrain(Math.abs(dev) / range, 0, 1) : 0;
+
+  let amp  = pow(norm, 0.45) * 0.5; // compress range: 0..0.5 curved
+  let bVis = 0.5 + sign * amp;      // remapped back to 0..1
   bVis = constrain(bVis, 0, 1);
 
   if (bVis < 0.5) {
@@ -1038,6 +1422,8 @@ function loadNetwork(data) {
     updateNodePrior(n);
     n.belief = n.prior; n.displayBelief = n.prior;
   });
+  particles = [];
+  pendingSpawns = [];
 
   // Re-establish origin/pain references
   originNode = nodes.find(n => n.group === "origin") || null;
@@ -1264,7 +1650,6 @@ function drawArrowHead(tx, ty, ang, headLen, headWidth, lc, alpha) {
 function deleteNode(nodeId) {
   nodes = nodes.filter(n => n.id !== nodeId);
   edges = edges.filter(e => e.from !== nodeId && e.to !== nodeId);
-  observedNodes.delete(nodeId); // remove from analysis state if it was pinned
   if (originNode && originNode.id === nodeId) originNode = null;
   if (painNode   && painNode.id   === nodeId) painNode   = null;
   closePopup();
@@ -1581,6 +1966,7 @@ function screenToWorld(sx, sy) {
 
 function draw() {
   background(246, 246, 252);
+  autosaveTick();
 
   // Tick down input flash
   if (inputFlash && inputFlash.frames > 0) inputFlash.frames--;
@@ -1592,8 +1978,9 @@ function draw() {
       if (n.displayBelief === undefined) n.displayBelief = n.belief || 0.5;
       n.displayBelief += (n.belief - n.displayBelief) * BELIEF_LERP;
     }
-    // Advance particles
+    // Advance particles, and fire any cascade waves whose time has come
     tickParticles();
+    processPendingSpawns();
   }
 
   // Hover detection in world coords
@@ -1748,7 +2135,7 @@ function drawNode(n) {
     // Body
     stroke(isHov ? color(255,255,255,230) : color(255,255,255,160));
     strokeWeight(isHov ? 4 : 3);
-    fill(analyseMode && n.displayBelief !== undefined ? beliefColor(n.displayBelief) : n.col);
+    fill(analyseMode && n.displayBelief !== undefined ? beliefColor(n.displayBelief, n.prior) : n.col);
     rect(n.x-hw, n.y-hh, n.rw, n.rh, cr);
 
     // Input flash overlay
@@ -1761,19 +2148,6 @@ function drawNode(n) {
 
     // Pain dial for rect pain node
     if (analyseMode && n.group === "pain") drawPainDial(n);
-
-    // Observed indicator — small pin in top-right corner
-    if (analyseMode && observedNodes.has(n.id)) {
-      noStroke(); fill(255, 220, 50, 230);
-      ellipse(n.x + n.rw/2 - 10, n.y - n.rh/2 + 10, 14, 14);
-      fill(80, 60, 0);
-      let ctx2 = drawingContext;
-      ctx2.save(); ctx2.font = "bold 9px Georgia";
-      ctx2.textAlign = "center"; ctx2.textBaseline = "middle";
-      ctx2.fillStyle = "rgba(60,40,0,0.9)";
-      ctx2.fillText("●", n.x + n.rw/2 - 10, n.y - n.rh/2 + 10);
-      ctx2.restore();
-    }
 
     // Label — white fill with dark stroke outline for legibility
     textAlign(CENTER,CENTER); textStyle(BOLD); textSize(n.fontSize);
@@ -1789,7 +2163,7 @@ function drawNode(n) {
     noStroke(); fill(0,0,0,20); ellipse(n.x+3,n.y+5,(n.r+5)*2);
     stroke(isHov ? color(255,255,255,230) : color(255,255,255,160));
     strokeWeight(isHov ? 4 : 3);
-    fill(analyseMode && n.displayBelief !== undefined ? beliefColor(n.displayBelief) : n.col);
+    fill(analyseMode && n.displayBelief !== undefined ? beliefColor(n.displayBelief, n.prior) : n.col);
     ellipse(n.x,n.y,n.r*2);
 
     // Input flash overlay
@@ -1802,12 +2176,6 @@ function drawNode(n) {
 
     // Pain dial — indicator ring drawn in analyse mode
     if (analyseMode && n.group === "pain") drawPainDial(n);
-
-    // Observed indicator dot
-    if (analyseMode && observedNodes.has(n.id)) {
-      noStroke(); fill(255, 220, 50, 230);
-      ellipse(n.x + n.r * 0.65, n.y - n.r * 0.65, 14, 14);
-    }
 
     // Label — white fill with dark stroke outline for legibility
     textAlign(CENTER,CENTER); textStyle(BOLD); textSize(n.fontSize);
@@ -1845,7 +2213,7 @@ function drawPainDial(n) {
   let sweep      = TWO_PI * b;          // 0 = none, 1 = full circle
 
   // Colour transitions cyan→grey→red with belief
-  let dc = beliefColor(b);
+  let dc = beliefColor(b, n.prior);
   stroke(dc);
   strokeWeight(10);
   arc(n.x, n.y, radius * 2, radius * 2, startAngle, startAngle + sweep);
@@ -2081,12 +2449,20 @@ function mouseReleased() {
 // Only active in analyse mode when a node is hovered.
 // = or + → apply a facilitatory signal (more problems) to the hovered node
 // -       → apply an inhibitory signal (fewer problems) to the hovered node
-// Each keypress: updates n.belief, marks node as observed (pinned),
-//               runs propagation, spawns visual particles.
+//
+// Nothing stays pinned after this. The pressed node is held at its new value
+// only for the propagation run this keypress triggers (the standard FCM
+// "what-if" technique: clamp the stimulus concept for one run so its ripple
+// through the network can be observed), then it rejoins the network fully —
+// free to be pulled around by feedback from everything downstream of it,
+// same as every other node. That's what lets a single input genuinely bubble
+// A→B→C and even loop back to affect the node you started with.
 
 function keyPressed() {
   // Only act in analyse mode when a node is hovered
   if (!analyseMode || !hoveredNode) return;
+
+  let n = hoveredNode;
 
   // "=" or "+" = facilitate,  "-" = inhibit
   let delta = 0;
@@ -2102,16 +2478,16 @@ function keyPressed() {
     return; // not our key
   }
 
-  // Apply signal to the hovered node, mark as observed
-  let n = hoveredNode;
+  // Apply signal to the hovered node
   n.belief = constrain((n.belief || 0.5) + delta, 0, 1);
-  observedNodes.add(n.id);
 
-  // Propagate belief through the network
-  propagateBelief();
+  // Propagate belief through the network, holding this node fixed for the
+  // duration of this run only — see note above.
+  propagateBelief(n.id);
 
-  // Spawn particles along every active edge that can carry signal from this node
-  spawnParticles(n.id);
+  // Animate the full cascade: hop 1 out of this node now, hop 2 out of
+  // whatever that reaches a little later, and so on through the network.
+  scheduleCascade(n.id);
 
   // Flash feedback
   inputFlash = { nodeId: n.id, frames: 18, direction: direction, strength: abs(delta) };
@@ -2121,50 +2497,85 @@ function keyPressed() {
 
 // ─── BELIEF PROPAGATION ──────────────────────────────────────────────────────
 //
-// Iterative message passing. Each edge defines a directed influence:
+// Fuzzy Cognitive Map (FCM) update — Kosko-style signed weighted propagation.
+// Each edge defines a directed influence:
 //
 //   Edge e from node A to node B (direction "to"):
 //     SENDER   = A  (the node the arrow comes FROM)
 //     RECEIVER = B  (the node the arrow points TO)
 //
-//   If linkState = "facilitate": receiver is pushed toward sender's belief
+//   If linkState = "facilitate": receiver is pushed TOWARD sender's belief
+//     (sender above its own prior → receiver pushed up; sender below its own
+//      prior → receiver pushed down)
 //   If linkState = "inhibit":    receiver is pushed AWAY from sender's belief
-//                                (high sender → low receiver, and vice versa)
+//     (sender above its own prior → receiver pushed DOWN, and vice versa)
 //
 //   direction "to":   A→B only
 //   direction "from": B→A only  (arrow visual points FROM b, so b sends to a)
 //   direction "both": A→B and B→A simultaneously (each sends to the other)
 //
-// Observed nodes are pinned — they send but never receive.
+// Nothing is pinned across calls. A single node may be held fixed for the
+// duration of one call via clampedId (the standard FCM what-if technique —
+// clamp the stimulus concept, let the rest of the network respond) — every
+// other node, including ones touched by a previous keypress, updates freely
+// and can itself be pulled around by downstream feedback.
 
-function propagateBelief() {
-  // ── Noisy-OR belief propagation ───────────────────────────────────────────
+function propagateBelief(clampedId) {
+  // ── Fuzzy Cognitive Map (FCM) belief propagation ──────────────────────────
   //
-  // Noisy-OR model: each node's belief = probability it is activated by
-  // at least one of its parents. With parents P1..Pn and edge strengths w1..wn:
+  // Only each parent's SIGNED deviation from its own resting prior propagates
+  // (dev = belief - prior, can be negative). A parent sitting exactly at its
+  // prior sends no signal — this keeps an all-neutral network stationary.
   //
-  //   P(not activated by Pi) = 1 - Pi.belief × wi
-  //   P(not activated by any) = ∏ (1 - Pi.belief × wi)
-  //   P(activated)           = 1 - ∏ (1 - Pi.excess × wi)
+  // For each non-clamped node, incoming deviations are combined into a
+  // weighted sum S = Σ ±w·dev (facilitate = +, inhibit = -), then squashed
+  // with tanh and applied on the correct side of the node's own prior so the
+  // result always stays in [0,1] and prior remains the true resting point:
   //
-  // KEY: we use each parent's EXCESS above its own prior, not its full belief.
-  // This means a node at its resting prior sends no signal — only deviations
-  // from baseline propagate. This prevents all parents at 0.5 prior from
-  // compounding into an artificially elevated child belief before any
-  // evidence has been entered.
+  //   S >= 0:  target = prior + (1-prior)·tanh(S)   (room to grow toward 1)
+  //   S <  0:  target = prior +    prior ·tanh(S)   (room to fall toward 0)
   //
-  // The child's prior is combined after: final = 1 - (1-prior) × ∏ terms
-  // So: no active parents → child sits at its own prior.
-  //     active parents    → child pushed above prior toward 1.
+  // The node then relaxes a fraction (RELAX_ALPHA) of the way toward that
+  // target each pass, rather than jumping straight to it. This is what makes
+  // "inhibit" genuinely inhibit (pulls belief below prior, unlike the old
+  // noisy-OR rule which was monotone non-decreasing), and it damps the
+  // oscillation that signed feedback loops can otherwise produce.
   //
-  // INHIBIT links use excess below prior (how much the parent has been
-  // suppressed) rather than excess above it.
-  //
-  // Multiple iterations let belief travel through chains (A→B→C→D).
-  // Edge weights are fixed per keypress — LOOP_DAMPING is applied once
-  // globally (not per iteration) to prevent feedback loops from inflating.
-  //
-  // Observed (pinned) nodes are never updated by propagation.
+  // Propagation stops early once every node's per-pass change falls below
+  // CONVERGE_EPS (a stable equilibrium has been reached); otherwise it runs
+  // the full PROP_ITERATIONS and is flagged as not-converged.
+
+  // Hop distances from the clamped node, used only to cap how far this run
+  // is allowed to reach (maxPropagationHops, set by the Analyse panel
+  // slider). Computed locally rather than via a shared helper with
+  // scheduleCascade — kept deliberately independent so a change to one
+  // can't destabilise the other. Skipped entirely when unlimited.
+  let hopDist = null;
+  if (clampedId !== undefined && maxPropagationHops !== Infinity) {
+    hopDist = { [clampedId]: 0 };
+    let frontier = [clampedId];
+    let h = 0;
+    while (frontier.length > 0) {
+      let next = [];
+      for (let nodeId of frontier) {
+        for (let i = 0; i < edges.length; i++) {
+          let e = edges[i];
+          if (e.linkState === "off") continue;
+          let targetId = null;
+          if ((e.direction === "to" || e.direction === "both") && e.from === nodeId) targetId = e.to;
+          else if ((e.direction === "from" || e.direction === "both") && e.to === nodeId) targetId = e.from;
+          if (targetId === null || hopDist[targetId] !== undefined) continue;
+          hopDist[targetId] = h + 1;
+          next.push(targetId);
+        }
+      }
+      h++;
+      frontier = next;
+    }
+  }
+  function withinHopCap(nodeId) {
+    return !hopDist || (hopDist[nodeId] !== undefined && hopDist[nodeId] <= maxPropagationHops);
+  }
 
   // Normalise edge strengths: thickest edge = weight 1.0
   let maxT = 1;
@@ -2192,30 +2603,34 @@ function propagateBelief() {
         " [" + e.direction + "/" + e.linkState.substring(0,3) + "]" +
         " t=" + e.thickness.toFixed(1) + " w=" + edgeW[e.id].toFixed(2));
     }
-    debugLines.push("Observed: " + Array.from(observedNodes).join(","));
+    debugLines.push("Clamped: " + (clampedId !== undefined ? clampedId : "none"));
     for (let i = 0; i < nodes.length; i++) {
       let n = nodes[i];
-      let ex = Math.max(0, n.belief - (n.prior || 0.5));
+      let dev = n.belief - (n.prior || 0.5);
       debugLines.push("  " + n.label.substring(0,10) +
         " b=" + n.belief.toFixed(2) +
         " p=" + (n.prior||0.5).toFixed(2) +
-        " ex=" + ex.toFixed(2));
+        " dev=" + dev.toFixed(2));
     }
   }
 
-  for (let iter = 0; iter < PROP_ITERATIONS; iter++) {
+  let iter = 0;
+  let converged = false;
+
+  for (; iter < PROP_ITERATIONS; iter++) {
     // Snapshot all current beliefs so updates don't cascade within one pass
     let snap = {};
     for (let i = 0; i < nodes.length; i++) snap[nodes[i].id] = nodes[i].belief;
 
-    // For each non-observed node, accumulate the noisy-OR product of parents.
-    // Start the product at 1.0 — the prior is folded in at the end.
-    let product = {};
+    // For each non-clamped, in-range node, accumulate the signed weighted
+    // sum of incoming deviations. Start at 0 — the prior is the resting point.
+    let S = {};
     for (let i = 0; i < nodes.length; i++) {
-      if (!observedNodes.has(nodes[i].id)) product[nodes[i].id] = 1.0;
+      let id = nodes[i].id;
+      if (id !== clampedId && withinHopCap(id)) S[id] = 0;
     }
 
-    // Multiply in each parent's contribution
+    // Add in each parent's signed contribution
     for (let i = 0; i < edges.length; i++) {
       let e = edges[i];
       if (e.linkState === "off") continue;
@@ -2225,67 +2640,130 @@ function propagateBelief() {
       if (aBelief === undefined || bBelief === undefined) continue;
 
       let w     = edgeW[e.id];
-      let isFac = (e.linkState === "facilitate");
-
-      // For each directed influence: P(child not fired by this parent) = 1 - excess × w
-      // Inline rather than inner function to avoid strict-mode function-in-loop issues.
-      // Only the EXCESS above the parent's own prior propagates — a parent sitting
-      // at its resting prior sends no signal.
+      let sign  = (e.linkState === "facilitate") ? 1 : -1;
 
       if (e.direction === "to" || e.direction === "both") {
-        if (product[bId] !== undefined) {
-          let parentNode = getNode(aId);
+        if (S[bId] !== undefined) {
+          let parentNode  = getNode(aId);
           let parentPrior = parentNode ? (parentNode.prior || 0.5) : 0.5;
-          let excess = isFac
-            ? Math.max(0, aBelief - parentPrior)
-            : Math.max(0, parentPrior - aBelief);
-          product[bId] *= (1.0 - excess * w);
+          S[bId] += sign * w * (aBelief - parentPrior);
         }
       }
       if (e.direction === "from" || e.direction === "both") {
-        if (product[aId] !== undefined) {
-          let parentNode = getNode(bId);
+        if (S[aId] !== undefined) {
+          let parentNode  = getNode(bId);
           let parentPrior = parentNode ? (parentNode.prior || 0.5) : 0.5;
-          let excess = isFac
-            ? Math.max(0, bBelief - parentPrior)
-            : Math.max(0, parentPrior - bBelief);
-          product[aId] *= (1.0 - excess * w);
+          S[aId] += sign * w * (bBelief - parentPrior);
         }
       }
     }
 
-    // Compute target belief for each non-observed node and update directly.
-    // Formula: final = 1 - (1-prior) × product
-    // This means: prior is the floor (no parents active = sits at prior),
-    // and each active parent pushes belief further above the prior.
+    // Squash S onto the correct side of each node's prior, then relax a
+    // fraction of the way toward that target (damps oscillation/overshoot).
+    let maxDelta = 0;
     for (let i = 0; i < nodes.length; i++) {
       let n = nodes[i];
-      if (observedNodes.has(n.id)) continue;
-      if (product[n.id] === undefined) continue;
+      if (n.id === clampedId) continue;
+      if (S[n.id] === undefined) continue;
 
-      let prior     = n.prior || 0.5;
-      let newBelief = constrain(1.0 - (1.0 - prior) * product[n.id], 0.0, 1.0);
+      let prior  = n.prior || 0.5;
+      let s      = S[n.id];
+      let target = s >= 0
+        ? prior + (1.0 - prior) * Math.tanh(s)
+        : prior +        prior  * Math.tanh(s);
+      target = constrain(target, 0.0, 1.0);
 
+      let cur       = snap[n.id];
+      let newBelief = constrain(cur + RELAX_ALPHA * (target - cur), 0.0, 1.0);
+
+      maxDelta = Math.max(maxDelta, Math.abs(newBelief - cur));
       n.belief = newBelief;
     }
 
-
-    // Capture iter 0 products into debug overlay
+    // Capture iter 0 sums into debug overlay
     if (showDebug && iter === 0) {
-      debugLines.push("iter0 products:");
+      debugLines.push("iter0 sums:");
       for (let i = 0; i < nodes.length; i++) {
         let n = nodes[i];
-        if (product[n.id] !== undefined) {
+        if (S[n.id] !== undefined) {
           debugLines.push("  " + n.label.substring(0,8) +
-            " prod=" + product[n.id].toFixed(3) +
+            " S=" + S[n.id].toFixed(3) +
             " b=" + n.belief.toFixed(3));
         }
       }
     }
+
+    if (maxDelta < CONVERGE_EPS) { converged = true; iter++; break; }
+  }
+
+  lastPropIterations = iter;
+  lastPropConverged  = converged;
+
+  if (showDebug) {
+    debugLines.push("passes=" + lastPropIterations +
+      (lastPropConverged ? " (converged)" : " (did not settle)"));
   }
 }
 
 // ─── PARTICLE ANIMATION ──────────────────────────────────────────────────────
+
+// Walk outward from sourceId through active edges and schedule a
+// spawnParticles() call for every node the signal reaches, timed in waves so
+// the dots visibly relay hop by hop — A's dot arriving at B triggers B's
+// dots toward C, etc. — rather than only ever showing the first hop out of
+// the pressed node. This is the exact scheduling logic confirmed working
+// (2 hops deep) before later changes regressed it; restored verbatim rather
+// than reconstructed, since a reconstructed version kept coming back wrong.
+function scheduleCascade(sourceId) {
+  pendingSpawns = []; // cancel any cascade still in flight from a previous press
+
+  spawnParticles(sourceId); // hop 1 fires immediately, no scheduling delay
+
+  let visited = new Set([sourceId]);
+  let frontier = [sourceId];
+  let wave = 0;
+
+  while (frontier.length > 0) {
+    let next = [];
+    for (let nodeId of frontier) {
+      for (let i = 0; i < edges.length; i++) {
+        let e = edges[i];
+        if (e.linkState === "off") continue;
+
+        let targetId = null;
+        if ((e.direction === "to" || e.direction === "both") && e.from === nodeId) targetId = e.to;
+        else if ((e.direction === "from" || e.direction === "both") && e.to === nodeId) targetId = e.from;
+
+        if (targetId === null || visited.has(targetId)) continue;
+        visited.add(targetId);
+        next.push(targetId);
+      }
+    }
+
+    wave++;
+    // Only schedule these nodes to fire ONWARD if that stays within the cap.
+    // They still receive their incoming particle either way (spawned by the
+    // previous wave's firing, below) — this only stops them relaying further,
+    // so the animation's reach matches propagateBelief's exactly.
+    if (wave < maxPropagationHops) {
+      for (let nodeId of next) {
+        pendingSpawns.push({ frame: frameCount + wave * WAVE_GAP_FRAMES, nodeId: nodeId });
+      }
+    }
+    frontier = next;
+  }
+}
+
+// Fire any scheduled cascade waves whose time has come. Called once per
+// frame alongside tickParticles().
+function processPendingSpawns() {
+  for (let i = pendingSpawns.length - 1; i >= 0; i--) {
+    if (pendingSpawns[i].frame <= frameCount) {
+      spawnParticles(pendingSpawns[i].nodeId);
+      pendingSpawns.splice(i, 1);
+    }
+  }
+}
 
 // Spawn particles outward from a source node along all connected active edges
 function spawnParticles(sourceNodeId) {
@@ -2306,11 +2784,15 @@ function spawnParticles(sourceNodeId) {
     let sender = getNode(sourceNodeId);
     if (!sender) continue;
 
-    // Particle colour based on sender's current belief and link type
-    let senderB   = sender.belief || 0.5;
-    let isFac     = e.linkState === "facilitate";
-    let targetB   = isFac ? senderB : (1.0 - senderB);
-    let pCol      = beliefColor(targetB);
+    // Particle colour based on sender's current belief and link type.
+    // Inhibit edges carry the "opposite" signal visually, so both belief and
+    // its pivot (prior) are reflected around 0.5 together.
+    let senderB     = sender.belief !== undefined ? sender.belief : 0.5;
+    let senderPrior = sender.prior  !== undefined ? sender.prior  : 0.5;
+    let isFac       = e.linkState === "facilitate";
+    let targetB     = isFac ? senderB     : (1.0 - senderB);
+    let targetPrior = isFac ? senderPrior : (1.0 - senderPrior);
+    let pCol        = beliefColor(targetB, targetPrior);
 
     particles.push({
       edgeId:  e.id,
@@ -2323,11 +2805,25 @@ function spawnParticles(sourceNodeId) {
   }
 }
 
-// Advance all particles one frame
+// Advance all particles one frame. Each particle's t-increment is derived
+// from its edge's actual on-screen length so every dot moves at the same
+// constant pixel speed — a long edge just takes proportionally more frames
+// to cross, rather than its dot visibly moving faster than a short edge's.
 function tickParticles() {
   for (let i = particles.length - 1; i >= 0; i--) {
     let p = particles[i];
-    p.t += PARTICLE_SPD;
+
+    let e = edges.find(function(x) { return x.id === p.edgeId; });
+    let a = e ? getNode(e.from) : null;
+    let b = e ? getNode(e.to)   : null;
+    if (!e || !a || !b) { particles.splice(i, 1); continue; }
+
+    let angle  = atan2(b.y - a.y, b.x - a.x);
+    let startP = nodeEdgePoint(a, angle);
+    let endP   = nodeEdgePoint(b, angle + PI);
+    let len    = dist(startP.x, startP.y, endP.x, endP.y);
+
+    p.t += PARTICLE_PX_PER_FRAME / Math.max(len, 1);
     if (p.t >= 1) {
       p.alive = false;
       particles.splice(i, 1);
