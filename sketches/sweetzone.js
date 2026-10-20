@@ -655,6 +655,19 @@ function keyPressed() {
   }
 }
 
+// Touchpads send a rapid stream of small pixel deltas; mouse wheels send discrete
+// notches (line mode, or large pixel jumps). Once a touchpad gesture is detected,
+// stay in touchpad mode briefly so large momentum deltas aren't mistaken for a wheel.
+let lastTouchpadWheel = -Infinity;
+
+function isTouchpadWheel(event) {
+  if (event.deltaMode !== 0) return false;                          // line/page mode = mouse wheel
+  if (Math.abs(event.deltaY) < 50) { lastTouchpadWheel = millis(); return true; }
+  return millis() - lastTouchpadWheel < 150;                        // momentum tail of a touchpad gesture
+}
+
+const NEEDLE_WHEEL_DIVISOR = 25;   // scroll px per needle unit (0–100); lower = more sensitive
+
 function mouseWheel(event) {
   if (showGraph && mouseY > canvasH) {
     // scrolling over the graph panel zooms the time axis instead of the needle
@@ -662,7 +675,9 @@ function mouseWheel(event) {
     GRAPH_WINDOW_SEC = constrain(GRAPH_WINDOW_SEC * zoomFactor, MIN_WINDOW_SEC, MAX_HISTORY_SEC);
     return false;
   }
-  needleValue = constrain(needleValue - event.delta / 50, 0, 100);
+  // Touchpad (natural scrolling) is inverted so the needle follows the fingers
+  const dir = isTouchpadWheel(event) ? -1 : 1;
+  needleValue = constrain(needleValue - dir * event.delta / NEEDLE_WHEEL_DIVISOR, 0, 100);
   return false;
 }
 
