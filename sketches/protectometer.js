@@ -671,7 +671,7 @@ function mousePressed() {
     }
     menuTextOpen = false; return;
   }
-  if (dist(mouseX, mouseY, ICON_APP_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { menuAppOpen = !menuAppOpen; menuTextOpen = false; return; }
+  if (dist(mouseX, mouseY, ICON_APP_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { setTheme(currentTheme === 'classic' ? 'modern' : 'classic'); menuTextOpen = false; return; }
   if (dist(mouseX, mouseY, ICON_TEXT_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { menuTextOpen = !menuTextOpen; menuAppOpen = false; return; }
   for (let lbl of editableLabels) {
     if (lbl.isOver(mouseX, mouseY) && !lbl.locked) { lbl.startEditing(); editableLabels.forEach(o => { if (o !== lbl) o.stopEditing(); }); return; }
