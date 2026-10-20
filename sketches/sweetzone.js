@@ -548,7 +548,9 @@ function mousePressed() {
   let p = getPointer();
   let outerR = dialRadius + 20;
   if (hitTestArcWord(uncertaintyText, -90, outerR, 32, p.x, p.y)) {
-    startEditingUnc(); return;
+    // return false so p5 prevents the mousedown default, which would otherwise
+    // move focus back to the page and immediately blur (close) the input
+    startEditingUnc(); return false;
   }
   startInteraction(p.x, p.y);
 }
