@@ -136,12 +136,6 @@ const ICON_Y      = 614;
 const ICON_APP_X  = 30;
 const ICON_TEXT_X = ICON_APP_X + MENU_ICON_SIZE + MENU_ICON_GAP;
 
-const DROP_W     = 148;
-const DROP_H     = 36;
-const DROP_X     = ICON_APP_X - 8;
-const DROP_ITEMS = ['classic', 'modern'];
-
-let menuAppOpen  = false;
 let menuTextOpen = false;
 let currentTextPreset = 'NOI Pain';
 
@@ -390,7 +384,6 @@ function draw() {
 
   editableLabels.forEach(lbl => lbl.display());
   drawMenuIcons();
-  if (menuAppOpen)  drawAppearanceDropdown();
   if (menuTextOpen) drawTextDropdown();
 }
 
@@ -500,7 +493,7 @@ function drawMenuIcons() {
   const ax = ICON_APP_X, ay = ICON_Y;
   const isHoverApp = dist(mouseX, mouseY, ax, ay) <= r + 6;
   noStroke();
-  fill(menuAppOpen ? [...T.menuHighlight] : isHoverApp ? [...T.menuHighlight, 200] : [...T.menuBg]);
+  fill(isHoverApp ? [...T.menuHighlight, 200] : [...T.menuBg]);
   rect(ax - r, ay - r, MENU_ICON_SIZE, MENU_ICON_SIZE, 8);
   const dc = [[210,70,70],[70,170,70],[70,110,210]];
   const dp = [[-6,4],[6,4],[0,-7]];
@@ -524,45 +517,6 @@ function drawMenuIcons() {
   line(tx - 8, ty + 6, tx + 5, ty + 6);
   noStroke();
   fill(...T.menuText); textSize(10); textAlign(CENTER, TOP); text('TEXT', tx, ty + r + 3);
-}
-
-function drawAppearanceDropdown() {
-  push(); rectMode(CORNER);
-  const numCards = DROP_ITEMS.length;
-  const panelW = numCards * PREVIEW_W + (numCards + 1) * PREVIEW_GAP;
-  const panelH = PREVIEW_H + PREVIEW_LABEL_H + 16;
-  const panelX = ICON_APP_X - 8;
-  const panelY = ICON_Y - MENU_ICON_SIZE / 2 - panelH - 6;
-  const mb = T.menuBg;
-  noStroke(); fill(mb[0], mb[1], mb[2], 240); rect(panelX, panelY, panelW, panelH, 10);
-  const mbr = T.menuBorder; stroke(mbr[0], mbr[1], mbr[2]); strokeWeight(1); noFill(); rect(panelX, panelY, panelW, panelH, 10); noStroke();
-
-  for (let i = 0; i < numCards; i++) {
-    const key = DROP_ITEMS[i], th = THEMES[key];
-    const cardX = panelX + PREVIEW_GAP + i * (PREVIEW_W + PREVIEW_GAP);
-    const cardY = panelY + 8;
-    const isSel = currentTheme === key;
-    const isHov = mouseX >= cardX && mouseX <= cardX + PREVIEW_W && mouseY >= cardY && mouseY <= cardY + PREVIEW_H + PREVIEW_LABEL_H;
-    if (isSel) { const sf = th.sliderFill; stroke(sf[0], sf[1], sf[2]); strokeWeight(3); }
-    else if (isHov) { const mb2 = T.menuBorder; stroke(mb2[0], mb2[1], mb2[2]); strokeWeight(1.5); }
-    else { noStroke(); }
-    fill(th.bg[0], th.bg[1], th.bg[2]); rect(cardX, cardY, PREVIEW_W, PREVIEW_H, 6); noStroke();
-    const dotR = 3.5, dotSpacing = (PREVIEW_W - 8) / 7;
-    for (let d = 0; d < 8; d++) {
-      const dx = cardX + 4 + d * dotSpacing, dy = cardY + 11;
-      let col; if (d < 4) col = th.vuGreen; else if (d < 6) col = th.vuOrange; else col = th.vuRed;
-      const c = d < 5 ? col : th.vuOff; fill(c[0], c[1], c[2]); ellipse(dx, dy, dotR * 2, dotR * 2);
-    }
-    const sTrackX = cardX + PREVIEW_W * 0.72, sTop = cardY + 20, sBot = cardY + PREVIEW_H - 8;
-    const tc = th.trackColor; stroke(tc[0], tc[1], tc[2]); strokeWeight(2); line(sTrackX, sTop, sTrackX, sBot); noStroke();
-    const sc = th.sliderFill; fill(sc[0], sc[1], sc[2]); rectMode(CORNER); rect(sTrackX - 6, lerp(sTop, sBot, 0.4) - 5, 12, 10, 4);
-    const kx = cardX + PREVIEW_W * 0.32, ky = cardY + PREVIEW_H * 0.65, kr = 9;
-    const kf = th.knobFill; noStroke(); fill(kf[0], kf[1], kf[2]); circle(kx, ky, kr * 2);
-    const ki = th.knobIndicator; stroke(ki[0], ki[1], ki[2]); strokeWeight(1.5); line(kx, ky, kx + kr * 0.7 * cos(-0.9), ky + kr * 0.7 * sin(-0.9)); noStroke();
-    const mt = isSel ? th.sliderFill : T.menuText; fill(mt[0], mt[1], mt[2]); textSize(11); textAlign(CENTER, TOP); text(th.name, cardX + PREVIEW_W / 2, cardY + PREVIEW_H + 3);
-    if (isSel) { fill(255, 255, 255, 200); textSize(12); textAlign(RIGHT, TOP); text('✓', cardX + PREVIEW_W - 3, cardY + 3); }
-  }
-  pop();
 }
 
 function drawTextDropdown() {
@@ -647,32 +601,28 @@ function handlePointerMove(px, py) {
 // =====================================================================
 // MOUSE EVENTS
 // =====================================================================
-function mousePressed() {
-  if (menuAppOpen) {
-    const panelH1 = PREVIEW_H + PREVIEW_LABEL_H + 16, panelX1 = ICON_APP_X - 8;
-    const panelY1 = ICON_Y - MENU_ICON_SIZE / 2 - panelH1 - 6;
-    for (let i = 0; i < DROP_ITEMS.length; i++) {
-      const cardX = panelX1 + PREVIEW_GAP + i * (PREVIEW_W + PREVIEW_GAP), cardY = panelY1 + 8;
-      if (mouseX >= cardX && mouseX <= cardX + PREVIEW_W && mouseY >= cardY && mouseY <= cardY + PREVIEW_H + PREVIEW_LABEL_H) {
-        setTheme(DROP_ITEMS[i]); menuAppOpen = false; return;
-      }
-    }
-    menuAppOpen = false; return;
-  }
+// Menu icons and the TEXT preset panel — shared by mouse and touch input.
+// Returns true if the press was consumed by the menus.
+function handleMenuPress(px, py) {
   if (menuTextOpen) {
     const presetKeys = Object.keys(TEXT_PRESETS);
     const panelX2 = ICON_TEXT_X - MENU_ICON_SIZE / 2 - 8, panelH2 = PREVIEW_H + PREVIEW_LABEL_H + 16;
     const panelY2 = ICON_Y - MENU_ICON_SIZE / 2 - panelH2 - 6;
     for (let i = 0; i < presetKeys.length; i++) {
       const cardX = panelX2 + PREVIEW_GAP + i * (PREVIEW_W + PREVIEW_GAP), cardY = panelY2 + 8;
-      if (mouseX >= cardX && mouseX <= cardX + PREVIEW_W && mouseY >= cardY && mouseY <= cardY + PREVIEW_H + PREVIEW_LABEL_H) {
-        applyTextPreset(presetKeys[i]); menuTextOpen = false; return;
+      if (px >= cardX && px <= cardX + PREVIEW_W && py >= cardY && py <= cardY + PREVIEW_H + PREVIEW_LABEL_H) {
+        applyTextPreset(presetKeys[i]); menuTextOpen = false; return true;
       }
     }
-    menuTextOpen = false; return;
+    menuTextOpen = false; return true;
   }
-  if (dist(mouseX, mouseY, ICON_APP_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { setTheme(currentTheme === 'classic' ? 'modern' : 'classic'); menuTextOpen = false; return; }
-  if (dist(mouseX, mouseY, ICON_TEXT_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { menuTextOpen = !menuTextOpen; menuAppOpen = false; return; }
+  if (dist(px, py, ICON_APP_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { setTheme(currentTheme === 'classic' ? 'modern' : 'classic'); menuTextOpen = false; return true; }
+  if (dist(px, py, ICON_TEXT_X, ICON_Y) < MENU_ICON_SIZE / 2 + 6) { menuTextOpen = !menuTextOpen; return true; }
+  return false;
+}
+
+function mousePressed() {
+  if (handleMenuPress(mouseX, mouseY)) return;
   for (let lbl of editableLabels) {
     if (lbl.isOver(mouseX, mouseY) && !lbl.locked) { lbl.startEditing(); editableLabels.forEach(o => { if (o !== lbl) o.stopEditing(); }); return; }
     else { lbl.stopEditing(); }
@@ -734,6 +684,10 @@ function touchCanvasPos(touch) {
 }
 function onTouchStart(e) {
   e.preventDefault();
+  if (e.touches.length === e.changedTouches.length) {   // first finger down: check menu buttons
+    const {x,y} = touchCanvasPos(e.changedTouches[0]);
+    if (handleMenuPress(x, y)) return;
+  }
   for (const t of e.changedTouches) { const {x,y} = touchCanvasPos(t); const hit = findHitTarget(x,y); if (hit) { applyHit(hit,x,y); activeTouches.push({id:t.identifier,hit}); } }
 }
 function onTouchMove(e) {
