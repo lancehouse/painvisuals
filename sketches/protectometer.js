@@ -683,9 +683,28 @@ function mousePressed() {
 function mouseReleased() { sliders.forEach(s => s.draggingSlider = s.draggingKnob = false); lorenzKnob.dragging = false; }
 function mouseDragged() { handlePointerMove(mouseX, mouseY); }
 
+// Touchpads send a rapid stream of small pixel deltas; mouse wheels send discrete
+// notches (line mode, or large pixel jumps). Once a touchpad gesture is detected,
+// stay in touchpad mode briefly so large momentum deltas aren't mistaken for a wheel.
+const TOUCHPAD_SENSITIVITY = 0.4;   // slider px per touchpad delta px
+let lastTouchpadWheel = -Infinity;
+
+function isTouchpadWheel(event) {
+  if (event.deltaMode !== 0) return false;                          // line/page mode = mouse wheel
+  if (Math.abs(event.deltaY) < 50) { lastTouchpadWheel = millis(); return true; }
+  return millis() - lastTouchpadWheel < 150;                        // momentum tail of a touchpad gesture
+}
+
 function mouseWheel(event) {
-  const knobStep = event.deltaY > 0 ? -0.015 : 0.015;
-  const sliderStep = event.deltaY > 0 ? 10 : -10;
+  let knobStep, sliderStep;
+  if (isTouchpadWheel(event)) {
+    // Proportional and inverted, so the control follows the fingers
+    sliderStep = -event.deltaY * TOUCHPAD_SENSITIVITY;
+    knobStep = -sliderStep * 0.0015;
+  } else {
+    knobStep = event.deltaY > 0 ? -0.015 : 0.015;
+    sliderStep = event.deltaY > 0 ? 10 : -10;
+  }
   let handled = false;
   for (let s of sliders) {
     if (dist(mouseX, mouseY, s.x, KNOB_Y) <= KNOB_RADIUS + CLICK_PAD) {
