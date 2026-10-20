@@ -62,7 +62,8 @@ function setup() {
   canvasElem = createCanvas(canvasW, canvasH);
   angleMode(DEGREES);
   textAlign(CENTER, CENTER);
-  textFont("cursive");
+  textFont("Patrick Hand"); // hand-lettered, loaded from Google Fonts in sweetzone.html
+  if (document.fonts) document.fonts.load("16px 'Patrick Hand'"); // canvas text alone may not trigger the web font download
 
   dialCenterX = width / 2;
   dialCenterY = height / 2 + 60;
@@ -75,7 +76,7 @@ function setup() {
   inputUnc.elt.style.outline = "none";
   inputUnc.elt.style.color = "white";
   inputUnc.elt.style.textAlign = "center";
-  inputUnc.elt.style.fontFamily = "cursive";
+  inputUnc.elt.style.fontFamily = "'Patrick Hand', sans-serif";
   inputUnc.elt.style.padding = "0px";
   inputUnc.elt.style.margin = "0px";
 
